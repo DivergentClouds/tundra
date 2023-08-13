@@ -25,6 +25,20 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const exe_options = b.addOptions();
+    exe.addOptions("build_options", exe_options);
+
+    const c_alloc = b.option(bool, "c_alloc", "Link LibC to allow use of c_allocator on posix systems") orelse false;
+    exe_options.addOption(bool, "c_alloc", c_alloc);
+
+    if (c_alloc) {
+        if (optimize == .Debug) {
+            std.log.err("Use a release mode if you want to use c_allocator\n", .{});
+            return error.UnwantedDebugCAllocator;
+        }
+        exe.linkLibC();
+    }
+
     if (target.os_tag == .windows) {
         exe.linkLibC();
     }
