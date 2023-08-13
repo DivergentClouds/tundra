@@ -6,8 +6,8 @@
 ISA
 ===
 
-Instruction Format
-------------------
+Binary Format
+-------------
 OOO WW DRR
 
 O -> opcode
