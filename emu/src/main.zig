@@ -89,7 +89,7 @@ pub fn main() !void {
 
     _ = try memory_file.readAll(memory);
 
-    try interpret(memory);
+    try interpret(memory, allocator);
 
     if (args.len == 3) {
         var memdump_file = try std.fs.cwd().createFile(args[2], .{});
@@ -140,6 +140,7 @@ fn mmio(
     address: u16,
     optional_value: ?u16, // null on reads
     running: ?*bool, // null on reads
+    allocator: std.mem.Allocator,
 ) !?u16 {
     switch (@as(MemoryMap, @enumFromInt(address))) {
         .char_in_ready => {
@@ -155,20 +156,21 @@ fn mmio(
                 if (event_count == 0) {
                     return 0;
                 } else {
-                    var peek_buffer: [4096]c.INPUT_RECORD = undefined;
+                    var peek_buffer = try allocator.alloc(c.INPUT_RECORD, event_count);
+                    defer allocator.free(peek_buffer);
 
-                    if (c.PeekConsoleInputA(stdin_handle, &peek_buffer, peek_buffer.len, &event_count) == 0) {
+                    if (c.PeekConsoleInputA(stdin_handle, peek_buffer.ptr, @intCast(peek_buffer.len), &event_count) == 0) {
                         return error.WinCouldNotPeekInput;
                     }
 
-                    for (peek_buffer, 0..) |input_record, i| {
-                        if (i >= event_count) return 0;
-
-                        if (input_record.EventType != 1) continue;
+                    for (peek_buffer) |input_record| {
+                        const KEY_EVENT = 1;
+                        if (input_record.EventType != KEY_EVENT) continue;
 
                         const char = input_record.Event.KeyEvent.uChar.AsciiChar;
                         if (char == '\r') return 1;
                     }
+                    return 0;
                 }
             } else {
                 var pfd = [1]std.os.pollfd{
@@ -253,6 +255,7 @@ fn getRValue(
     deref_r: bool,
     memory: []u8,
     registers: *[4]u16,
+    allocator: std.mem.Allocator,
 ) !u16 {
     const pc = @intFromEnum(Registers.pc); // for register access
     var r_value = getRegister(reg_r, registers.*);
@@ -261,7 +264,7 @@ fn getRValue(
         if (r_value < max_memory) {
             r_value = memory[r_value] + (@as(u16, memory[r_value + 1]) << 8);
         } else {
-            const mmio_optional = try mmio(r_value, null, null);
+            const mmio_optional = try mmio(r_value, null, null, allocator);
             if (mmio_optional) |mmio_value| {
                 r_value = mmio_value;
             }
@@ -274,7 +277,7 @@ fn getRValue(
     return r_value;
 }
 
-fn interpret(memory: []u8) !void {
+fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
     const pc = @intFromEnum(Registers.pc); // for register access
     var registers: [4]u16 = .{undefined} ** 4;
     registers[pc] = 0;
@@ -298,6 +301,7 @@ fn interpret(memory: []u8) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
+                    allocator,
                 );
 
                 setRegister(
@@ -313,6 +317,7 @@ fn interpret(memory: []u8) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
+                    allocator,
                 );
 
                 var w_value = getRegister(
@@ -338,6 +343,7 @@ fn interpret(memory: []u8) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
+                    allocator,
                 );
 
                 value = @bitCast(0 - @as(i16, @bitCast(value)));
@@ -355,6 +361,7 @@ fn interpret(memory: []u8) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
+                    allocator,
                 );
 
                 const w_value = getRegister(
@@ -366,7 +373,7 @@ fn interpret(memory: []u8) !void {
                     memory[w_value] = @truncate(r_value);
                     memory[w_value + 1] = @truncate(r_value >> 8);
                 } else {
-                    _ = try mmio(w_value, r_value, &running);
+                    _ = try mmio(w_value, r_value, &running, allocator);
                 }
             },
             .op_cmp => {
@@ -375,6 +382,7 @@ fn interpret(memory: []u8) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
+                    allocator,
                 );
 
                 const w_value = getRegister(
@@ -390,6 +398,7 @@ fn interpret(memory: []u8) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
+                    allocator,
                 );
 
                 var w_value = getRegister(
@@ -426,6 +435,7 @@ fn interpret(memory: []u8) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
+                    allocator,
                 );
 
                 var w_value = getRegister(
@@ -448,6 +458,7 @@ fn interpret(memory: []u8) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
+                    allocator,
                 );
 
                 var w_value = getRegister(
