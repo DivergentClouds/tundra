@@ -28,7 +28,7 @@ Dereferenced registers
 *A  = 100
 *B  = 101
 *C  = 110
-*PC = 111 // auto-incremented by register-width after dereference
+*PC = 111
 
 
 Instructions
@@ -50,7 +50,8 @@ Notes
 -----
 - data is 16-bit little endian
 - dereferencing R will load memory[R] and memory[R + 1]
-
+- PC is incremented by 1 after an instruction is fetched
+- dereferencing PC will increment it by 2
 
 MMIO
 ====
