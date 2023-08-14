@@ -51,7 +51,7 @@ Notes
 - data is 16-bit little endian
 - dereferencing R will load memory[R] and memory[R + 1]
 - PC is incremented by 1 after an instruction is fetched
-- dereferencing PC will increment it by 2
+- dereferencing PC will increment it by 2 after fetch but before execution
 
 MMIO
 ====
