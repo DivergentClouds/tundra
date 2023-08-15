@@ -19,8 +19,8 @@ macro jmp? src
 	mov pc, src
 end macro
 
-macro jmpi? src
-	movi pc, src
+macro jmpi? imm
+	movi pc, imm
 end macro
 
 ; must be called before other stack macros
@@ -34,8 +34,8 @@ macro push? src
 	addi c, -2
 end macro
 
-macro pushi? src
-	stoi c, src
+macro pushi? imm
+	stoi c, imm
 	addi c, -2
 end macro
 
@@ -57,11 +57,11 @@ macro call? src
 	ret_addr:
 end macro
 
-macro calli? src
+macro calli? imm
 	local ret_addr
 
 	pushi ret_addr
-	jmpi src
+	jmpi imm
 	drop			; if cmp caused jump to be skipped, drop return address
 	ret_addr:
 end macro

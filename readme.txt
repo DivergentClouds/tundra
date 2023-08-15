@@ -87,3 +87,69 @@ Notes
 - enter must be pressed before input may be read
 - the emulator on windows will currently only detect enter within the first
   4096 input events
+
+
+Assembler
+=========
+
+assembling
+----------
+to assemble a tundra program, use fasmg (https://flatassembler.net/) and
+include either 'tundra-core.inc' or 'tundra-extra.inc' (which includes
+tundra-core) at the top of your file. assembly is not case-sensitive.
+semicolons start line comments
+
+
+tundra-core
+-----------
+tundra-core.inc includes the instruction set along with macros that treat R as
+an immediate. To use them, suffix an instruction name with 'I'. As an example:
+
+	MOVI A, -1
+
+is equivalent to:
+
+	MOV A, *PC
+	0xFFFF
+
+
+tundra-extra
+------------
+tundra-extra.inc includes tundra-core along with the following macros ('src'
+marks a register that may be dereferenced, 'dest' marks one that may not be,
+and 'imm' marks a 16-bit immediate:
+
+	; moves a register to PC
+	JMP src
+
+	; moves an immediate to PC
+	JMPI imm
+
+	; this macro must be called before the first time a macro that uses the stack
+	; 	is called
+	; macros that use the stack reserve C as the stack pointer
+	; sets C to 0xFFEE
+	STACK_INIT
+
+	; pushes a register to the stack
+	PUSH src
+
+	; pushes an immediate to the stack
+	PUSHI imm
+	
+	; pops an element from the stack into dest
+	POP dest
+
+	; removes the top element of the stack
+	DROP
+
+	; pushes the next address to the stack and jumps to the value of src
+	; has no effect if CMP flag is set
+	CALL src
+	
+	; pushes the next address to the stack and jumps to the value of imm
+	; has no effect if CMP flag is set
+	CALLI src
+
+	; pops an element of the stack into PC
+	RET
