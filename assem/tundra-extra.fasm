@@ -1,0 +1,71 @@
+; various extra fasmg macros for Tundra
+
+; Permission to use, copy, modify, and/or distribute this software for
+; any purpose with or without fee is hereby granted.
+
+; THE SOFTWARE IS PROVIDED “AS IS” AND THE AUTHOR DISCLAIMS ALL
+; WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
+; OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE
+; FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY
+; DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+; AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
+; OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+include 'tundra-core.fasm'
+
+stack_base = 0xFFEE
+
+macro jmp? src
+	mov pc, src
+end macro
+
+macro jmpi? src
+	movi pc, src
+end macro
+
+; must be called before other stack macros
+; reserves C for use as the stack pointer
+macro stack_init?
+	movi c, stack_base
+end macro
+
+macro push? src
+	sto c, src
+	addi c, -2
+end macro
+
+macro pushi? src
+	stoi c, src
+	addi c, -2
+end macro
+
+macro pop? dest
+	addi c, 2
+	mov dest, *c
+end macro
+
+macro drop?
+	addi c, 2
+end macro
+
+macro call? src
+	local ret_addr
+
+	pushi ret_addr
+	jmp src
+	drop			; if cmp caused jump to be skipped, drop return address
+	ret_addr:
+end macro
+
+macro calli? src
+	local ret_addr
+
+	pushi ret_addr
+	jmpi src
+	drop			; if cmp caused jump to be skipped, drop return address
+	ret_addr:
+end macro
+
+macro ret?
+	pop pc
+end macro
