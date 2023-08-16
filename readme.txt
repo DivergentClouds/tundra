@@ -153,3 +153,14 @@ and 'imm' marks a 16-bit immediate:
 
 	; pops an element of the stack into PC
 	RET
+
+
+License
+=======
+
+notes
+-----
+- The contents of this repository are licensed under the 3-Clause BSDlicense
+	unless otherwise specified
+- tundra-core.inc and tundra-extra.inc are licensed under the 0-Clause BSD
+	license
