@@ -56,19 +56,39 @@ Notes
 MMIO
 ====
 
-memory map
+Memory Map
 ----------
 |---------|------------|-----------------------------------|
 | address | read/write | effect                            |
 |---------|------------|-----------------------------------|
 | 0xfff0  | read       | reads 1 if input is available,    |
-|         |            | reads 0 otherwise                 |
+|         |            | 0 otherwise                       |
 |---------|------------|-----------------------------------|
 | 0xfff1  | read       | waits until input is available,   |
-|         |            | then reads LSB from input,        |
+|         |            | then reads input into LSB,        |
 |         |            | clearing MSB                      |
 |---------|------------|-----------------------------------|
 | 0xfff2  | write      | writes LSB to output              |
+|---------|------------|-----------------------------------|
+| 0xfff3  | read/write | stores the least significant word |
+|         |            | of the 24-bit storage seek        |
+|         |            | address                           |
+|---------|------------|-----------------------------------|
+| 0xfff4  | read/write | stores LSB as the most            |
+|         |            | significant byte of the 24-bit    |
+|         |            | storage seek address. reads into  |
+|         |            | LSB and clears MSB                |
+|---------|------------|-----------------------------------|
+| 0xfff5  | read/write | stores the chunk size for storage |
+|         |            | access                            |
+|---------|------------|-----------------------------------|
+| 0xfff6  | write      | write a chunk from storage at the |
+|         |            | seek address into memory at the   |
+|         |            | given address                     |
+|---------|------------|-----------------------------------|
+| 0xfff7  | write      | write a chunk from memory at the  |
+|         |            | the given address into storage at |
+|         |            | the seek address                  |
 |---------|------------|-----------------------------------|
 | 0xffff  | write      | halts                             |
 |---------|------------|-----------------------------------|
@@ -77,6 +97,10 @@ memory map
 Notes
 -----
 - addresses 0xfff0 and above are reserved for mmio and may not be executed
+- attempting to read/write memory in and above the mmio range via storage access
+	is a no-op
+- attempting to read undefined storage will read 0
+- only the 24-bit address range of storage may be written to
 
 
 Emulator
@@ -85,14 +109,12 @@ Emulator
 Notes
 -----
 - enter must be pressed before input may be read
-- the emulator on windows will currently only detect enter within the first
-  4096 input events
 
 
 Assembler
 =========
 
-assembling
+Assembling
 ----------
 to assemble a tundra program, use fasmg (https://flatassembler.net/) and
 include either 'tundra-core.inc' or 'tundra-extra.inc' (which includes
@@ -100,7 +122,7 @@ tundra-core) at the top of your file. assembly is not case-sensitive.
 semicolons start line comments
 
 
-tundra-core
+Tundra-Core
 -----------
 tundra-core.inc includes the instruction set along with macros that treat R as
 an immediate. To use them, suffix an instruction name with 'I'. As an example:
@@ -113,7 +135,7 @@ is equivalent to:
 	0xFFFF
 
 
-tundra-extra
+Tundra-Extra
 ------------
 tundra-extra.inc includes tundra-core along with the following macros ('src'
 marks a register that may be dereferenced, 'dest' marks one that may not be,
@@ -128,7 +150,7 @@ and 'imm' marks a 16-bit immediate:
 	; this macro must be called before the first time a macro that uses the stack
 	; 	is called
 	; macros that use the stack reserve C as the stack pointer
-	; sets C to 0xFFEE
+	; sets C to 0xFFDE
 	STACK_INIT
 
 	; pushes a register to the stack
@@ -158,9 +180,9 @@ and 'imm' marks a 16-bit immediate:
 License
 =======
 
-notes
+Notes
 -----
-- The contents of this repository are licensed under the 3-Clause BSDlicense
+- The contents of this repository are licensed under the 3-Clause BSD license
 	unless otherwise specified
 - tundra-core.inc and tundra-extra.inc are licensed under the 0-Clause BSD
 	license

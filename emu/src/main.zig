@@ -10,7 +10,8 @@ else
     undefined;
 
 const reserved_mmio_space = 0x10; // reserved space at the top of memory for mmio
-const max_memory = 0x10000 - reserved_mmio_space;
+const max_memory = 0x1_0000 - reserved_mmio_space;
+const max_storage = 0xff_ffff;
 
 const PossibleAllocators = enum {
     debug_general_purpose, // Debug Mode, GPA with extra config settings
@@ -62,10 +63,10 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
-    if (args.len < 2 or args.len > 3) {
+    if (args.len < 3 or args.len > 4) {
         try std.io.getStdErr().writer().print(
             \\Usage:
-            \\{s} <memory file> [memdump file]
+            \\{s} <memory file> <storage file> [memdump file]
             \\
         , .{args[0]});
         return error.BadArgCount;
@@ -89,10 +90,20 @@ pub fn main() !void {
 
     _ = try memory_file.readAll(memory);
 
-    try interpret(memory, allocator);
+    var storage_file = try std.fs.cwd().createFile(args[2], .{
+        .truncate = false,
+        .read = true,
+    });
+    defer storage_file.close();
 
-    if (args.len == 3) {
-        var memdump_file = try std.fs.cwd().createFile(args[2], .{});
+    try interpret(
+        memory,
+        allocator,
+        storage_file,
+    );
+
+    if (args.len == 4) {
+        var memdump_file = try std.fs.cwd().createFile(args[3], .{});
         defer memdump_file.close();
 
         try memdump_file.writer().writeAll(memory);
@@ -125,22 +136,42 @@ const Instruction = struct {
 };
 
 const MemoryMap = enum(u16) {
-    // does nothing on write, reads 1 if input has a byte available, 0 otherwise
+    // read: reads 1 if input has a byte available, 0 otherwise
     char_in_ready = max_memory,
-    // does nothing on write, reads LSB from input (stdin), clears MSB, blocks
+    // read: reads LSB from input (stdin), clears MSB, blocks
     char_in,
-    // does nothing on read, writes LSB to output (stdout)
+    // write: writes LSB to output (stdout)
     char_out,
+    // read/write: stores least significant word of the 24-bit seek address
+    seek_lsw,
+    // read/write: stores most significant byte of the 24-bit seek address
+    seek_msb,
+    // read/write: stores the chunk size for storage access
+    chunk_size,
+    // write: writes a chunk from storage at the seek address to memory at the
+    // given address
+    storage_in,
+    // write: writes chunk from memory at the given address at the seek address
+    // in storage
+    storage_out,
     // halts the system
     halt = 0xffff,
     _,
 };
 
+const MmioState = struct {
+    allocator: std.mem.Allocator,
+    running: bool,
+    seek_address: u24,
+    chunk_size: u16,
+    storage_file: std.fs.File,
+    memory: []u8,
+};
+
 fn mmio(
     address: u16,
     optional_value: ?u16, // null on reads
-    running: ?*bool, // null on reads
-    allocator: std.mem.Allocator,
+    state: *MmioState,
 ) !?u16 {
     switch (@as(MemoryMap, @enumFromInt(address))) {
         .char_in_ready => {
@@ -156,10 +187,18 @@ fn mmio(
                 if (event_count == 0) {
                     return 0;
                 } else {
-                    var peek_buffer = try allocator.alloc(c.INPUT_RECORD, event_count);
-                    defer allocator.free(peek_buffer);
+                    var peek_buffer = try state.allocator.alloc(
+                        c.INPUT_RECORD,
+                        event_count,
+                    );
+                    defer state.allocator.free(peek_buffer);
 
-                    if (c.PeekConsoleInputA(stdin_handle, peek_buffer.ptr, @intCast(peek_buffer.len), &event_count) == 0) {
+                    if (c.PeekConsoleInputA(
+                        stdin_handle,
+                        peek_buffer.ptr,
+                        @intCast(peek_buffer.len),
+                        &event_count,
+                    ) == 0) {
                         return error.WinCouldNotPeekInput;
                     }
 
@@ -203,7 +242,68 @@ fn mmio(
         },
         .halt => {
             if (optional_value) |_| {
-                running.?.* = false;
+                state.running = false;
+            }
+        },
+        .seek_lsw => {
+            if (optional_value) |value| {
+                state.seek_address = (state.seek_address & 0xff0000) | value;
+            } else {
+                return @truncate(state.seek_address);
+            }
+        },
+        .seek_msb => {
+            if (optional_value) |value| {
+                state.seek_address =
+                    (state.seek_address & 0xffff) | @as(u24, value) << 16;
+            } else {
+                return @truncate(state.seek_address >> 16);
+            }
+        },
+        .chunk_size => {
+            if (optional_value) |value| {
+                state.chunk_size = value;
+            } else {
+                return state.chunk_size;
+            }
+        },
+        .storage_in => {
+            if (optional_value) |value| {
+                try state.storage_file.seekTo(state.seek_address);
+                const amount_read = try state.storage_file.reader().readAll(
+                    state.memory[value..@min(
+                        state.memory.len,
+                        state.chunk_size +| value,
+                    )],
+                );
+
+                if (amount_read < state.chunk_size) {
+                    @memset(
+                        state.memory[amount_read + value .. @min(
+                            state.memory.len,
+                            state.chunk_size +| value,
+                        )],
+                        0,
+                    );
+                }
+            }
+        },
+        .storage_out => {
+            if (optional_value) |value| {
+                // make sure not to write beyond max storage size
+                const actual_chunk_size: u16 =
+                    if (@as(u32, state.seek_address) + state.chunk_size > max_storage)
+                    @truncate(max_storage - state.seek_address)
+                else
+                    state.chunk_size;
+
+                try state.storage_file.seekTo(state.seek_address);
+                try state.storage_file.writer().writeAll(
+                    state.memory[value..@min(
+                        state.memory.len,
+                        actual_chunk_size +| value,
+                    )],
+                );
             }
         },
         _ => {},
@@ -255,16 +355,21 @@ fn getRValue(
     deref_r: bool,
     memory: []u8,
     registers: *[4]u16,
-    allocator: std.mem.Allocator,
+    state: *MmioState,
 ) !u16 {
     const pc = @intFromEnum(Registers.pc); // for register access
     var r_value = getRegister(reg_r, registers.*);
 
     if (deref_r) {
         if (r_value < max_memory) {
-            r_value = memory[r_value] + (@as(u16, memory[r_value + 1]) << 8);
+            r_value = memory[r_value] +
+                (@as(u16, memory[r_value + 1]) << 8);
         } else {
-            const mmio_optional = try mmio(r_value, null, null, allocator);
+            const mmio_optional = try mmio(
+                r_value,
+                null,
+                state,
+            );
             if (mmio_optional) |mmio_value| {
                 r_value = mmio_value;
             }
@@ -277,15 +382,27 @@ fn getRValue(
     return r_value;
 }
 
-fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
+fn interpret(
+    memory: []u8,
+    allocator: std.mem.Allocator,
+    storage: std.fs.File,
+) !void {
     const pc = @intFromEnum(Registers.pc); // for register access
     var registers: [4]u16 = .{undefined} ** 4;
     registers[pc] = 0;
 
     var cmp_flag = false;
 
-    var running = true;
-    while (running) {
+    var state: MmioState = .{
+        .allocator = allocator,
+        .running = true,
+        .seek_address = 0,
+        .chunk_size = 0,
+        .storage_file = storage,
+        .memory = memory,
+    };
+
+    while (state.running) {
         const instruction = parseInstruction(memory[registers[pc]]);
 
         registers[pc] +%= 1;
@@ -301,7 +418,7 @@ fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
-                    allocator,
+                    &state,
                 );
 
                 setRegister(
@@ -317,7 +434,7 @@ fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
-                    allocator,
+                    &state,
                 );
 
                 var w_value = getRegister(
@@ -343,7 +460,7 @@ fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
-                    allocator,
+                    &state,
                 );
 
                 value = @bitCast(0 - @as(i16, @bitCast(value)));
@@ -361,7 +478,7 @@ fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
-                    allocator,
+                    &state,
                 );
 
                 const w_value = getRegister(
@@ -373,7 +490,11 @@ fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
                     memory[w_value] = @truncate(r_value);
                     memory[w_value + 1] = @truncate(r_value >> 8);
                 } else {
-                    _ = try mmio(w_value, r_value, &running, allocator);
+                    _ = try mmio(
+                        w_value,
+                        r_value,
+                        &state,
+                    );
                 }
             },
             .op_cmp => {
@@ -382,7 +503,7 @@ fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
-                    allocator,
+                    &state,
                 );
 
                 const w_value = getRegister(
@@ -398,7 +519,7 @@ fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
-                    allocator,
+                    &state,
                 );
 
                 var w_value = getRegister(
@@ -435,7 +556,7 @@ fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
-                    allocator,
+                    &state,
                 );
 
                 var w_value = getRegister(
@@ -458,7 +579,7 @@ fn interpret(memory: []u8, allocator: std.mem.Allocator) !void {
                     instruction.deref_r,
                     memory,
                     &registers,
-                    allocator,
+                    &state,
                 );
 
                 var w_value = getRegister(
