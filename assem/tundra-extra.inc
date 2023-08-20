@@ -11,7 +11,20 @@
 ; AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 ; OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-include 'tundra-core.fasm'
+include 'tundra-core.inc'
+
+virtual at 0xfff0
+	mmio:
+	.input_available? = 0xfff0
+	.get_char? = 0xfff1
+	.put_char? = 0xfff2
+	.seek_lsw? = 0xfff3
+	.seek_msb? = 0xfff4
+	.chunk_size? = 0xfff5
+	.get_chunk? = 0xfff6
+	.put_chunk? = 0xfff7
+	.halt? = 0xffff
+end virtual
 
 stack_base = 0xFFEE
 

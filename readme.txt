@@ -90,7 +90,7 @@ Memory Map
 |         |            | the given address into storage at |
 |         |            | the seek address                  |
 |---------|------------|-----------------------------------|
-| 0xffff  | write      | halts                             |
+| 0xffff  | write      | halt execution                    |
 |---------|------------|-----------------------------------|
 
 
@@ -175,6 +175,28 @@ and 'imm' marks a 16-bit immediate:
 
 	; pops an element of the stack into PC
 	RET
+
+in addition, tundra-extra.inc defines following constants:
+
+	MMIO = 0xFFF0
+
+	MMIO.INPUT_AVAILABLE = 0xFFF0
+
+	MMIO.GET_CHAR = 0xFFF1
+
+	MMIO.PUT_CHAR = 0xFFF2
+
+	MMIO.SEEK_LSW = 0xFFF3
+
+	MMIO.SEEK_MSB = 0xFFF4
+
+	MMIO.CHUNK_SIZE = 0xFFF5
+
+	MMIO.GET_CHUNK = 0xFFF6
+
+	MMIO.PUT_CHUNK = 0xFFF7
+
+	MMIO.HALT = 0xFFFF
 
 
 License
