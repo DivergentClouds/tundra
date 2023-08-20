@@ -101,6 +101,7 @@ Notes
 	is a no-op
 - attempting to read undefined storage will read 0
 - only the 24-bit address range of storage may be written to
+- if EOF is recieved when reading input, then 0 will be read
 
 
 Emulator

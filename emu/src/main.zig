@@ -232,7 +232,7 @@ fn mmio(
         },
         .char_in => {
             if (optional_value == null) {
-                return try std.io.getStdIn().reader().readByte();
+                return std.io.getStdIn().reader().readByte() catch 0;
             }
         },
         .char_out => {
