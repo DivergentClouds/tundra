@@ -183,9 +183,9 @@ in addition, tundra-extra.inc defines following constants:
 
 	MMIO.INPUT_AVAILABLE = 0xFFF0
 
-	MMIO.GET_CHAR = 0xFFF1
+	MMIO.READ_CHAR = 0xFFF1
 
-	MMIO.PUT_CHAR = 0xFFF2
+	MMIO.WRITE_CHAR = 0xFFF2
 
 	MMIO.SEEK_LSW = 0xFFF3
 
@@ -193,9 +193,9 @@ in addition, tundra-extra.inc defines following constants:
 
 	MMIO.CHUNK_SIZE = 0xFFF5
 
-	MMIO.GET_CHUNK = 0xFFF6
+	MMIO.READ_CHUNK = 0xFFF6
 
-	MMIO.PUT_CHUNK = 0xFFF7
+	MMIO.WRITE_CHUNK = 0xFFF7
 
 	MMIO.HALT = 0xFFFF
 
