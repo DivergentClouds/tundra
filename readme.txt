@@ -153,7 +153,6 @@ and 'imm' marks a 16-bit immediate:
 	; 	is called
 	; macros that use the stack reserve C as the stack pointer
 	; sets C to 0xFFEE
-	; sets C to 0xFFDE
 	STACK_INIT
 
 	; pushes a register to the stack
