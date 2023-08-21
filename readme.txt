@@ -100,6 +100,7 @@ Notes
 - attempting to read/write memory in and above the mmio range via storage access
 	is a no-op
 - attempting to read undefined storage will read 0
+- seek address and chunk size default to 0
 - only the 24-bit address range of storage may be written to
 - if EOF is recieved when reading input, then 0 will be read
 
