@@ -152,6 +152,7 @@ and 'imm' marks a 16-bit immediate:
 	; this macro must be called before the first time a macro that uses the stack
 	; 	is called
 	; macros that use the stack reserve C as the stack pointer
+	; sets C to 0xFFEE
 	; sets C to 0xFFDE
 	STACK_INIT
 
