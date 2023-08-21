@@ -149,6 +149,18 @@ and 'imm' marks a 16-bit immediate:
 	; moves an immediate to PC
 	JMPI imm
 
+	; jump to src if dest1 and dest2 are equal
+	JEQ dest1, dest2, src
+
+	; jump to imm if dest1 and dest2 are equal
+	JEQI dest1, dest2, imm
+
+	; jump to src if dest1 and dest2 are not equal
+	JNE dest1, dest2, src
+
+	; jump to imm if dest1 and dest2 are not equal
+	JNEI, dest1, dest2, imm
+
 	; this macro must be called before the first time a macro that uses the stack
 	; 	is called
 	; macros that use the stack reserve C as the stack pointer
