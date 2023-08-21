@@ -218,7 +218,7 @@ License
 
 Notes
 -----
-- The contents of this repository are licensed under the 3-Clause BSD license
+- the contents of this repository are licensed under the 3-Clause BSD license
 	unless otherwise specified
 - tundra-core.inc and tundra-extra.inc are licensed under the 0-Clause BSD
 	license
