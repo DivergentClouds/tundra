@@ -43,9 +43,9 @@ macro jeq? dest1, dest2, src
 	local next, skip
 
 	cmp dest1, dest2
-	jmp next ; dest1 <= dest2
+	jmpi next ; dest1 <= dest2
 
-	jmp skip ; dest1 > dest2
+	jmpi skip ; dest1 > dest2
 
 	next:
 	cmp dest2, dest1
@@ -64,7 +64,7 @@ end macro
 macro jne? dest1, dest2, src
 	local skip
 
-	jeqi skip, dest
+	jeqi dest1, dest2, skip
 	jmp src
 	skip:
 end macro
