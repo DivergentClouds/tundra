@@ -62,7 +62,7 @@ end macro
 macro_gen_opcode
     mov, 000b
     add, 001b
-    reg, 010b
+    neg, 010b
     sto, 011b
     cmp, 100b
     shf, 101b
