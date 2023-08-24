@@ -375,7 +375,7 @@ fn flushStdin() !void {
     const stdin = std.io.getStdIn();
     const stdin_handle = stdin.handle;
     if (builtin.target.os.tag == .windows) {
-        if (c.FlushConsoleInput(stdin_handle) == 0) {
+        if (c.FlushConsoleInputBuffer(stdin_handle) == 0) {
             return error.CouldNotFlushInput;
         }
     } else {
