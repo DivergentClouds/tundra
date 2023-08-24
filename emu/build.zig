@@ -25,10 +25,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
-    const exe_options = b.addOptions();
-    exe.addOptions("build_options", exe_options);
-
-    if (target.os.tag == .windows) {
+    if (target.os_tag == .windows) {
         exe.linkLibC();
     }
 
