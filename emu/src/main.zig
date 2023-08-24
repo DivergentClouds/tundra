@@ -13,52 +13,21 @@ const reserved_mmio_space = 0x10; // reserved space at the top of memory for mmi
 const max_memory = 0x1_0000 - reserved_mmio_space;
 const max_storage = 0xff_ffff;
 
-const PossibleAllocators = enum {
-    debug_general_purpose, // Debug Mode, GPA with extra config settings
-    c, // for if linking libc
-    heap, // Windows
-    general_purpose, // else
-};
-
-const AllocatorType = union(PossibleAllocators) {
-    debug_general_purpose: std.heap.GeneralPurposeAllocator(.{
-        .never_unmap = true,
-        .retain_metadata = true,
-    }),
-    c: void,
-    heap: if (builtin.target.os.tag == .windows) std.heap.HeapAllocator else void,
-    general_purpose: std.heap.GeneralPurposeAllocator(.{}),
-};
-
 pub fn main() !void {
-    const allocator_kind: PossibleAllocators =
+    var allocator_type =
         comptime if (builtin.mode == .Debug)
-        .debug_general_purpose
-    else if (builtin.link_libc)
-        .c
-    else if (builtin.target.os.tag == .windows)
-        .heap
-    else
-        .general_purpose;
-
-    var allocator_type = switch (allocator_kind) {
-        .debug_general_purpose => std.heap.GeneralPurposeAllocator(.{
+        std.heap.GeneralPurposeAllocator(.{
             .never_unmap = true,
             .retain_metadata = true,
-        }){},
-        .heap => std.heap.HeapAllocator.init(),
-        .c => {},
-        .general_purpose => std.heap.GeneralPurposeAllocator(.{}){},
-    };
-
-    defer if (allocator_kind != .c) {
-        _ = allocator_type.deinit();
-    };
-
-    const allocator = if (allocator_kind == .c)
-        std.heap.c_allocator
+        }){}
+    else if (builtin.target.os.tag == .windows)
+        std.heap.HeapAllocator.init()
     else
-        allocator_type.allocator();
+        std.heap.GeneralPurposeAllocator(.{}){};
+
+    defer _ = allocator_type.deinit();
+
+    const allocator = allocator_type.allocator();
 
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);

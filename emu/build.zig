@@ -17,7 +17,7 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "tundra-emu",
+        .name = "tundra",
         // In this case the main source file is merely a path, however, in more
         // complicated build scripts, this could be a generated file.
         .root_source_file = .{ .path = "src/main.zig" },
@@ -27,17 +27,6 @@ pub fn build(b: *std.Build) !void {
 
     const exe_options = b.addOptions();
     exe.addOptions("build_options", exe_options);
-
-    const c_alloc = b.option(bool, "c_alloc", "Link LibC to allow use of c_allocator") orelse false;
-    exe_options.addOption(bool, "c_alloc", c_alloc);
-
-    if (c_alloc) {
-        if (optimize == .Debug) {
-            std.log.err("Use a release mode if you want to use c_allocator\n", .{});
-            return error.UnwantedDebugCAllocator;
-        }
-        exe.linkLibC();
-    }
 
     if (target.os_tag == .windows) {
         exe.linkLibC();
