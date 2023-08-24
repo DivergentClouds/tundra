@@ -371,6 +371,22 @@ fn getRValue(
     return r_value;
 }
 
+fn flushStdin() !void {
+    const stdin = std.io.getStdIn();
+    const stdin_handle = stdin.handle;
+    if (builtin.target.os.tag == .windows) {
+        if (c.FlushConsoleInput(stdin_handle) == 0) {
+            return error.CouldNotFlushInput;
+        }
+    } else {
+        const flags = try std.os.fcntl(stdin_handle, std.os.F.GETFL, 0);
+        _ = try std.os.fcntl(stdin_handle, std.os.F.SETFL, flags | std.os.O.NONBLOCK);
+
+        var buffer: [256]u8 = undefined;
+        while (try stdin.reader().read(&buffer) != 0) {}
+    }
+}
+
 fn interpret(
     memory: []u8,
     allocator: std.mem.Allocator,
@@ -391,6 +407,9 @@ fn interpret(
         .storage_file = storage,
         .memory = memory,
     };
+
+    // attempt to flush any remaining stdin characters
+    defer flushStdin() catch {};
 
     while (state.running) {
         const instruction = parseInstruction(memory[registers[pc]]);
