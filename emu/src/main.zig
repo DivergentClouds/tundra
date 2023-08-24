@@ -35,11 +35,31 @@ pub fn main() !void {
     if (args.len < 3 or args.len > 4) {
         try std.io.getStdErr().writer().print(
             \\Usage:
-            \\{s} <memory file> <storage file> [memdump file]
+            \\{s} <memory file> <storage file> [debugger mode]
+            \\
+            \\If debugger mode is 'true' then each instruction will be printed
+            \\as it is run
             \\
         , .{args[0]});
         return error.BadArgCount;
     }
+
+    const debugger_mode = if (args.len == 4) value: {
+        if (std.mem.eql(u8, args[3], "true")) {
+            break :value true;
+        } else if (std.mem.eql(u8, args[3], "false")) {
+            break :value false;
+        } else {
+            try std.io.getStdErr().writer().print(
+                \\Usage:
+                \\{s} <memory file> <storage file> [debugger mode]
+                \\
+                \\If debugger mode is given, it must be either 'true' or 'false'
+                \\
+            , .{args[0]});
+            return error.BadDebuggerMode;
+        }
+    } else false;
 
     var memory = try allocator.alloc(u8, max_memory);
     defer allocator.free(memory);
@@ -69,14 +89,8 @@ pub fn main() !void {
         memory,
         allocator,
         storage_file,
+        debugger_mode,
     );
-
-    if (args.len == 4) {
-        var memdump_file = try std.fs.cwd().createFile(args[3], .{});
-        defer memdump_file.close();
-
-        try memdump_file.writer().writeAll(memory);
-    }
 }
 
 const Opcodes = enum(u3) {
@@ -361,6 +375,7 @@ fn interpret(
     memory: []u8,
     allocator: std.mem.Allocator,
     storage: std.fs.File,
+    debugger: bool,
 ) !void {
     const pc = @intFromEnum(Registers.pc); // for register access
     var registers: [4]u16 = .{undefined} ** 4;
@@ -386,32 +401,47 @@ fn interpret(
             return error.EnteredMMIOSpace;
         }
 
+        const r_value =
+            try getRValue(
+            instruction.reg_r,
+            instruction.deref_r,
+            memory,
+            &registers,
+            &state,
+        );
+
+        if (debugger) {
+            std.debug.print("{x:0>4}: {s} {s: >2} ({x:0>4}), {s}{s: <2} ({x:0>4})\n", .{
+                registers[pc] -% 1,
+                @tagName(instruction.opcode)[3..],
+                @tagName(instruction.reg_w),
+                registers[@intFromEnum(instruction.reg_w)],
+                if (instruction.deref_r) "*" else "",
+                @tagName(instruction.reg_r),
+                registers[@intFromEnum(instruction.reg_r)],
+            });
+            if (instruction.deref_r) std.debug.print(
+                "                     [{x:0>4}{s}]\n",
+                .{
+                    r_value,
+                    if (registers[@intFromEnum(instruction.reg_r)] >= max_memory - 1)
+                        " (mmio)"
+                    else
+                        "",
+                },
+            );
+        }
+
         switch (instruction.opcode) {
             .op_mov => {
-                const value = try getRValue(
-                    instruction.reg_r,
-                    instruction.deref_r,
-                    memory,
-                    &registers,
-                    &state,
-                );
-
                 setRegister(
                     instruction.reg_w,
-                    value,
+                    r_value,
                     &cmp_flag,
                     &registers,
                 );
             },
             .op_add => {
-                const r_value = try getRValue(
-                    instruction.reg_r,
-                    instruction.deref_r,
-                    memory,
-                    &registers,
-                    &state,
-                );
-
                 var w_value = getRegister(
                     instruction.reg_w,
                     registers,
@@ -430,15 +460,7 @@ fn interpret(
                 );
             },
             .op_neg => {
-                var value = try getRValue(
-                    instruction.reg_r,
-                    instruction.deref_r,
-                    memory,
-                    &registers,
-                    &state,
-                );
-
-                value = @bitCast(0 - @as(i16, @bitCast(value)));
+                const value: u16 = @bitCast(0 - @as(i16, @bitCast(r_value)));
 
                 setRegister(
                     instruction.reg_w,
@@ -448,14 +470,6 @@ fn interpret(
                 );
             },
             .op_sto => {
-                const r_value = try getRValue(
-                    instruction.reg_r,
-                    instruction.deref_r,
-                    memory,
-                    &registers,
-                    &state,
-                );
-
                 const w_value = getRegister(
                     instruction.reg_w,
                     registers,
@@ -473,14 +487,6 @@ fn interpret(
                 }
             },
             .op_cmp => {
-                const r_value = try getRValue(
-                    instruction.reg_r,
-                    instruction.deref_r,
-                    memory,
-                    &registers,
-                    &state,
-                );
-
                 const w_value = getRegister(
                     instruction.reg_w,
                     registers,
@@ -489,14 +495,6 @@ fn interpret(
                 cmp_flag = @as(i16, @bitCast(w_value)) > @as(i16, @bitCast(r_value));
             },
             .op_shf => {
-                const r_value = try getRValue(
-                    instruction.reg_r,
-                    instruction.deref_r,
-                    memory,
-                    &registers,
-                    &state,
-                );
-
                 var w_value = getRegister(
                     instruction.reg_w,
                     registers,
@@ -526,14 +524,6 @@ fn interpret(
                 );
             },
             .op_and => {
-                var r_value = try getRValue(
-                    instruction.reg_r,
-                    instruction.deref_r,
-                    memory,
-                    &registers,
-                    &state,
-                );
-
                 var w_value = getRegister(
                     instruction.reg_w,
                     registers,
@@ -549,14 +539,6 @@ fn interpret(
                 );
             },
             .op_nor => {
-                var r_value = try getRValue(
-                    instruction.reg_r,
-                    instruction.deref_r,
-                    memory,
-                    &registers,
-                    &state,
-                );
-
                 var w_value = getRegister(
                     instruction.reg_w,
                     registers,
