@@ -275,7 +275,7 @@ fn mmio(
                 );
             }
         },
-        _ => {},
+        _ => return null,
     }
 
     return null;
@@ -287,9 +287,13 @@ fn setRegister(
     cmp_flag: *bool, // result of op_cmp, true if pc is not writable
     registers: *[4]u16,
 ) void {
-    if (id == .pc and cmp_flag.*) {
-        cmp_flag.* = false;
-        return;
+    if (id == .pc) {
+        if (cmp_flag.*) {
+            cmp_flag.* = false;
+            return;
+        }
+        // stop crash when moving to mmio space
+        registers[@intFromEnum(id)] = @max(value, max_memory - 1);
     }
     registers[@intFromEnum(id)] = value;
 }
@@ -330,7 +334,7 @@ fn getRValue(
     var r_value = getRegister(reg_r, registers.*);
 
     if (deref_r) {
-        if (r_value < max_memory) {
+        if (r_value < max_memory - 1) {
             r_value = memory[r_value] +
                 (@as(u16, memory[r_value + 1]) << 8);
         } else {
@@ -341,6 +345,8 @@ fn getRValue(
             );
             if (mmio_optional) |mmio_value| {
                 r_value = mmio_value;
+            } else {
+                return error.InvalidMMIOAccess;
             }
         }
         if (reg_r == .pc) {
