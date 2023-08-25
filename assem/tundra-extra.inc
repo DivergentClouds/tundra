@@ -56,8 +56,18 @@ end macro
 
 ; jump if equal immediate
 macro jeqi? dest1, dest2, imm
-	jeq dest1, dest2, *pc
-	dw imm
+	local next, skip
+
+	cmp dest1, dest2
+	jmpi next ; dest1 <= dest2
+
+	jmpi skip ; dest1 > dest2
+
+	next:
+	cmp dest2, dest1
+	jmpi imm; dest2 <= dest1 -> dest1 == dest2
+
+	skip:
 end macro
 
 ; jump if not equal
@@ -71,8 +81,11 @@ end macro
 
 ; jump if not equal immediate
 macro jnei? dest1, dest2, imm
-	jne dest1, dest2, *pc
-	dw imm
+	local skip
+
+	jeqi dest1, dest2, skip
+	jmpi imm
+	skip:
 end macro
 
 ; must be called before other stack macros

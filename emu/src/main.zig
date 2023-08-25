@@ -215,7 +215,7 @@ fn mmio(
         },
         .char_in => {
             if (optional_value == null) {
-                return std.io.getStdIn().reader().readByte() catch 0;
+                return std.io.getStdIn().reader().readByte() catch 0xff;
             }
         },
         .char_out => {
@@ -461,25 +461,24 @@ fn interpret(
                 );
             },
             .op_add => {
-                var w_value = getRegister(
+                const w_value = getRegister(
                     instruction.reg_w,
                     registers,
                 );
 
-                w_value = @bitCast(
-                    @as(i16, @bitCast(w_value)) +
-                        @as(i16, @bitCast(r_value)),
-                );
+                const value: u16 = @bitCast(w_value +% r_value);
 
                 setRegister(
                     instruction.reg_w,
-                    w_value,
+                    value,
                     &cmp_flag,
                     &registers,
                 );
             },
             .op_neg => {
-                const value: u16 = @bitCast(0 - @as(i16, @bitCast(r_value)));
+                const value: u16 = @bitCast(
+                    0 - @as(i16, @bitCast(r_value)),
+                );
 
                 setRegister(
                     instruction.reg_w,
