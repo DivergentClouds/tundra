@@ -23,6 +23,7 @@ virtual at 0xfff0
 	.chunk_size? = 0xfff5
 	.read_chunk? = 0xfff6
 	.write_chunk? = 0xfff7
+	.storage_attached? = 0xfff8
 	.halt? = 0xffff
 end virtual
 

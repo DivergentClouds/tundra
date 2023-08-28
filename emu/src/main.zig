@@ -29,42 +29,75 @@ pub fn main() !void {
 
     const allocator = allocator_type.allocator();
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+    var args = try std.process.argsWithAllocator(allocator);
+    defer args.deinit();
 
-    if (args.len < 3 or args.len > 4) {
-        try std.io.getStdErr().writer().print(
-            \\Usage:
-            \\{s} <memory file> <storage file> [debugger mode]
-            \\
-            \\If debugger mode is 'true' then each instruction will be printed
-            \\as it is run
-            \\
-        , .{args[0]});
-        return error.BadArgCount;
-    }
+    const usage =
+        \\Usage:
+        \\tundra <memory_file> [-s storage_file] [-d]
+    ;
 
-    const debugger_mode = if (args.len == 4) value: {
-        if (std.mem.eql(u8, args[3], "true")) {
-            break :value true;
-        } else if (std.mem.eql(u8, args[3], "false")) {
-            break :value false;
+    const stderr = std.io.getStdErr();
+
+    var memory_name: ?[]const u8 = null;
+    var storage_name: ?[]const u8 = null;
+    var debugger_mode = false;
+
+    _ = args.skip(); // skip args[0]
+    while (args.next()) |arg| {
+        if (std.mem.eql(u8, arg, "-s")) {
+            if (args.next()) |next_arg| {
+                if (storage_name == null) {
+                    // this is fine because args.deinit() is deferred
+                    storage_name = next_arg;
+                } else {
+                    stderr.writer().print(
+                        \\{s}
+                        \\
+                        \\Can not load two storage files
+                        \\
+                    , .{usage}) catch {};
+                    return error.UnexpectedStorageFile;
+                }
+            } else {
+                stderr.writer().print(
+                    \\{s}
+                    \\
+                    \\Expected storage file when none was given
+                    \\
+                , .{usage}) catch {};
+                return error.ExpectedStorageFile;
+            }
+        } else if (std.mem.eql(u8, arg, "-d")) {
+            debugger_mode = true;
         } else {
-            try std.io.getStdErr().writer().print(
-                \\Usage:
-                \\{s} <memory file> <storage file> [debugger mode]
-                \\
-                \\If debugger mode is given, it must be either 'true' or 'false'
-                \\
-            , .{args[0]});
-            return error.BadDebuggerMode;
+            if (memory_name == null) {
+                memory_name = arg;
+            } else {
+                stderr.writer().print(
+                    \\{s}
+                    \\
+                    \\Can not load more than one memory file
+                    \\
+                , .{usage}) catch {};
+                return error.TooManyMemoryFiles;
+            }
         }
-    } else false;
+    }
+    if (memory_name == null) {
+        stderr.writer().print(
+            \\{s}
+            \\
+            \\Expected memory file when none was given
+            \\
+        , .{usage}) catch {};
+        return error.NoMemoryFile;
+    }
 
     var memory = try allocator.alloc(u8, max_memory);
     defer allocator.free(memory);
 
-    var memory_file = try std.fs.cwd().openFile(args[1], .{});
+    var memory_file = try std.fs.cwd().openFile(memory_name.?, .{});
     defer memory_file.close();
 
     const memory_file_size = (try memory_file.metadata()).size();
@@ -79,11 +112,15 @@ pub fn main() !void {
 
     _ = try memory_file.readAll(memory);
 
-    var storage_file = try std.fs.cwd().createFile(args[2], .{
-        .truncate = false,
-        .read = true,
-    });
-    defer storage_file.close();
+    var storage_file: ?std.fs.File = if (storage_name) |name| blk: {
+        break :blk try std.fs.cwd().createFile(name, .{
+            .truncate = false,
+            .read = true,
+        });
+    } else null;
+    defer if (storage_file) |*file| {
+        file.close();
+    };
 
     try interpret(
         memory,
@@ -137,6 +174,8 @@ const MemoryMap = enum(u16) {
     // write: writes chunk from memory at the given address at the seek address
     // in storage
     storage_out,
+    //read: reads 1 if storage is attached, 0 otherwise
+    storage_attached,
     // halts the system
     halt = 0xffff,
     _,
@@ -148,6 +187,7 @@ const MmioState = struct {
     seek_address: u24,
     chunk_size: u16,
     storage_file: std.fs.File,
+    storage_attached: bool,
     memory: []u8,
 };
 
@@ -252,17 +292,27 @@ fn mmio(
         },
         .storage_in => {
             if (optional_value) |value| {
-                try state.storage_file.seekTo(state.seek_address);
-                const amount_read = try state.storage_file.reader().readAll(
-                    state.memory[value..@min(
-                        state.memory.len,
-                        state.chunk_size +| value,
-                    )],
-                );
+                if (state.storage_attached) {
+                    try state.storage_file.seekTo(state.seek_address);
+                    const amount_read = try state.storage_file.reader().readAll(
+                        state.memory[value..@min(
+                            state.memory.len,
+                            state.chunk_size +| value,
+                        )],
+                    );
 
-                if (amount_read < state.chunk_size) {
+                    if (amount_read < state.chunk_size) {
+                        @memset(
+                            state.memory[amount_read + value .. @min(
+                                state.memory.len,
+                                state.chunk_size +| value,
+                            )],
+                            0,
+                        );
+                    }
+                } else {
                     @memset(
-                        state.memory[amount_read + value .. @min(
+                        state.memory[value..@min(
                             state.memory.len,
                             state.chunk_size +| value,
                         )],
@@ -273,20 +323,27 @@ fn mmio(
         },
         .storage_out => {
             if (optional_value) |value| {
-                // make sure not to write beyond max storage size
-                const actual_chunk_size: u16 =
-                    if (@as(u32, state.seek_address) + state.chunk_size > max_storage)
-                    @truncate(max_storage - state.seek_address)
-                else
-                    state.chunk_size;
+                if (state.storage_attached) {
+                    // make sure not to write beyond max storage size
+                    const actual_chunk_size: u16 =
+                        if (@as(u32, state.seek_address) + state.chunk_size > max_storage)
+                        @truncate(max_storage - state.seek_address)
+                    else
+                        state.chunk_size;
 
-                try state.storage_file.seekTo(state.seek_address);
-                try state.storage_file.writer().writeAll(
-                    state.memory[value..@min(
-                        state.memory.len,
-                        actual_chunk_size +| value,
-                    )],
-                );
+                    try state.storage_file.seekTo(state.seek_address);
+                    try state.storage_file.writer().writeAll(
+                        state.memory[value..@min(
+                            state.memory.len,
+                            actual_chunk_size +| value,
+                        )],
+                    );
+                }
+            }
+        },
+        .storage_attached => {
+            if (optional_value == null) {
+                return @intFromBool(state.storage_attached);
             }
         },
         _ => return null,
@@ -390,7 +447,7 @@ fn flushStdin() !void {
 fn interpret(
     memory: []u8,
     allocator: std.mem.Allocator,
-    storage: std.fs.File,
+    storage: ?std.fs.File,
     debugger: bool,
 ) !void {
     const pc = @intFromEnum(Registers.pc); // for register access
@@ -404,7 +461,8 @@ fn interpret(
         .running = true,
         .seek_address = 0,
         .chunk_size = 0,
-        .storage_file = storage,
+        .storage_file = storage orelse undefined,
+        .storage_attached = storage != null,
         .memory = memory,
     };
 

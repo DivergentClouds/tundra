@@ -90,6 +90,9 @@ Memory Map
 |         |            | the given address into storage at |
 |         |            | the seek address                  |
 |---------|------------|-----------------------------------|
+| 0xfff8  | read       | reads 1 if storage is attached,   |
+|         |            | 0 otherwise                       |
+|---------|------------|-----------------------------------|
 | 0xffff  | write      | halt execution                    |
 |---------|------------|-----------------------------------|
 
@@ -209,6 +212,8 @@ in addition, tundra-extra.inc defines following constants:
 	MMIO.READ_CHUNK = 0xFFF6
 
 	MMIO.WRITE_CHUNK = 0xFFF7
+
+	MMIO.STORAGE_ATTACHED = 0xFFF8
 
 	MMIO.HALT = 0xFFFF
 
