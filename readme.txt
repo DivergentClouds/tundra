@@ -111,8 +111,13 @@ Notes
 Emulator
 ========
 
+Usage
+-----
+	tundra <memory_file> [-s storage_file] [-d]
+
 Notes
 -----
+- if the '-d' flag is set, each instruction will be printed as it is run
 - enter must be pressed before input may be read
 
 
