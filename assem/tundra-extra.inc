@@ -14,7 +14,7 @@
 include 'tundra-core.inc'
 
 virtual at 0xfff0
-	mmio:
+	mmio?:
 	.input_available? = 0xfff0
 	.read_char? = 0xfff1
 	.write_char? = 0xfff2
@@ -23,11 +23,12 @@ virtual at 0xfff0
 	.chunk_size? = 0xfff5
 	.read_chunk? = 0xfff6
 	.write_chunk? = 0xfff7
-	.storage_attached? = 0xfff8
+	.storage_count? = 0xfff8
+	.storage_index? = 0xfff9
 	.halt? = 0xffff
 end virtual
 
-stack_base = 0xFFEE
+stack_base = 0xFFFE
 
 ; jump
 macro jmp? src
@@ -108,6 +109,20 @@ end macro
 macro pop? dest
 	addi c, 2
 	mov dest, *c
+end macro
+
+; src is offset into the stack
+macro peek? dest, src
+	mov dest, c
+	add dest, src
+	mov dest, *dest
+end macro
+
+; imm is offset into the stack
+macro peeki? dest, imm
+	mov dest, c
+	addi dest, imm
+	mov dest, *dest
 end macro
 
 macro drop?

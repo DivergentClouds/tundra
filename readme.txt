@@ -90,8 +90,11 @@ Memory Map
 |         |            | the given address into storage at |
 |         |            | the seek address                  |
 |---------|------------|-----------------------------------|
-| 0xfff8  | read       | reads 1 if storage is attached,   |
-|         |            | 0 otherwise                       |
+| 0xfff8  | read       | reads the number of attached      |
+|         |            | storage devices                   |
+|---------|------------|-----------------------------------|
+| 0xfff9  | write      | set which storage device to       |
+|         |            | access, 0-indexed.                |
 |---------|------------|-----------------------------------|
 | 0xffff  | write      | halt execution                    |
 |---------|------------|-----------------------------------|
@@ -113,10 +116,11 @@ Emulator
 
 Usage
 -----
-	tundra <memory_file> [-s storage_file] [-d]
+	tundra <memory_file> [[-s storage_file] ...] [-d]
 
 Notes
 -----
+- at most 3 storage devices may be attached
 - if the '-d' flag is set, each instruction will be printed as it is run
 - enter must be pressed before input may be read
 
@@ -187,6 +191,12 @@ and 'imm' marks a 16-bit immediate:
 	; removes the top element of the stack
 	DROP
 
+	; copies a value that is src items deep in the stack to dest
+	PEEK dest, src
+
+	; copies a value that is imm items deep in the stack to dest
+	PEEKI dest, imm
+
 	; pushes the next address to the stack and jumps to the value of src
 	; has no effect if CMP flag is set
 	CALL src
@@ -218,7 +228,9 @@ in addition, tundra-extra.inc defines following constants:
 
 	MMIO.WRITE_CHUNK = 0xFFF7
 
-	MMIO.STORAGE_ATTACHED = 0xFFF8
+	MMIO.STORAGE_COUNT = 0xFFF8
+
+	MMIO.STORAGE_INDEX = 0xFFF9
 
 	MMIO.HALT = 0xFFFF
 

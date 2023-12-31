@@ -9,7 +9,7 @@ const c =
 else
     undefined;
 
-const reserved_mmio_space = 0x10; // reserved space at the top of memory for mmio
+const reserved_mmio_space = 0x20; // reserved space at the top of memory for mmio
 const max_memory = 0x1_0000 - reserved_mmio_space;
 const max_storage = 0xff_ffff;
 
@@ -32,40 +32,23 @@ pub fn main() !void {
     var args = try std.process.argsWithAllocator(allocator);
     defer args.deinit();
 
-    const usage =
-        \\Usage:
-        \\tundra <memory_file> [-s storage_file] [-d]
-    ;
-
-    const stderr = std.io.getStdErr();
-
     var memory_name: ?[]const u8 = null;
-    var storage_name: ?[]const u8 = null;
+    var storage_names = std.ArrayList([]const u8).init(allocator);
+    defer storage_names.deinit();
     var debugger_mode = false;
 
-    _ = args.skip(); // skip args[0]
+    const args0 = args.next() orelse
+        return error.NoArg0; // skip args[0]
     while (args.next()) |arg| {
         if (std.mem.eql(u8, arg, "-s")) {
             if (args.next()) |next_arg| {
-                if (storage_name == null) {
-                    // this is fine because args.deinit() is deferred
-                    storage_name = next_arg;
-                } else {
-                    stderr.writer().print(
-                        \\{s}
-                        \\
-                        \\Can not load two storage files
-                        \\
-                    , .{usage}) catch {};
-                    return error.UnexpectedStorageFile;
-                }
+                try storage_names.append(next_arg);
             } else {
-                stderr.writer().print(
-                    \\{s}
-                    \\
-                    \\Expected storage file when none was given
-                    \\
-                , .{usage}) catch {};
+                printUsage(
+                    std.io.getStdErr(),
+                    args0,
+                    "Expected storage file when none was given",
+                ) catch {};
                 return error.ExpectedStorageFile;
             }
         } else if (std.mem.eql(u8, arg, "-d")) {
@@ -74,27 +57,25 @@ pub fn main() !void {
             if (memory_name == null) {
                 memory_name = arg;
             } else {
-                stderr.writer().print(
-                    \\{s}
-                    \\
-                    \\Can not load more than one memory file
-                    \\
-                , .{usage}) catch {};
+                printUsage(
+                    std.io.getStdErr(),
+                    args0,
+                    "Can not load more than one memory file",
+                ) catch {};
                 return error.TooManyMemoryFiles;
             }
         }
     }
     if (memory_name == null) {
-        stderr.writer().print(
-            \\{s}
-            \\
-            \\Expected memory file when none was given
-            \\
-        , .{usage}) catch {};
+        printUsage(
+            std.io.getStdErr(),
+            args0,
+            "Expected memory file when none was given",
+        ) catch {};
         return error.NoMemoryFile;
     }
 
-    var memory = try allocator.alloc(u8, max_memory);
+    const memory = try allocator.alloc(u8, max_memory);
     defer allocator.free(memory);
 
     var memory_file = try std.fs.cwd().openFile(memory_name.?, .{});
@@ -104,7 +85,7 @@ pub fn main() !void {
     if (memory_file_size > max_memory) {
         try std.io.getStdErr().writer().print(
             \\Error: Memory file too large
-            \\ Max size is 0x{x} bytes
+            \\Max size is 0x{x} bytes
             \\
         , .{max_memory});
         return error.MemoryFileTooLarge;
@@ -112,25 +93,65 @@ pub fn main() !void {
 
     _ = try memory_file.readAll(memory);
 
-    var storage_file: ?std.fs.File = if (storage_name) |name| blk: {
-        break :blk try std.fs.cwd().createFile(name, .{
-            .truncate = false,
-            .read = true,
-        });
-    } else null;
-    defer if (storage_file) |*file| {
+    var storage_files = std.ArrayList(std.fs.File).init(allocator);
+
+    defer for (storage_files.items) |file| {
         file.close();
     };
+
+    if (storage_names.items.len > 3) {
+        printUsage(
+            std.io.getStdErr(),
+            args0,
+            "Expect at most 3 storage files, when more were given",
+        ) catch {};
+        return error.TooManyStorageFiles;
+    }
+
+    for (storage_names.items) |name| {
+        try storage_files.append(try std.fs.cwd().createFile(name, .{
+            .truncate = false,
+            .read = true,
+        }));
+    }
 
     try interpret(
         memory,
         allocator,
-        storage_file,
+        storage_files.items,
         debugger_mode,
     );
 }
 
-const Opcodes = enum(u3) {
+const Mmio = enum(u16) {
+    /// read: reads 1 if input has a byte available, 0 otherwise
+    char_in_ready = 0xfff0,
+    /// read: reads LSB from input (stdin), clears MSB, blocks
+    char_in,
+    /// write: writes LSB to output (stdout)
+    char_out,
+    /// read/write: stores least significant word of the 24-bit seek address
+    seek_lsw,
+    /// read/write: stores most significant byte of the 24-bit seek address
+    seek_msb,
+    /// read/write: stores the chunk size for storage access
+    chunk_size,
+    /// write: writes a chunk from storage at the seek address to memory at the
+    /// given address
+    storage_in,
+    /// write: writes chunk from memory at the given address at the seek address
+    /// in storage
+    storage_out,
+    /// read: reads the number of attached storage devices
+    storage_count,
+    /// write: set which storage device to access, 0-indexed
+    storage_index,
+    /// halts the system
+    halt = 0xffff,
+    _,
+};
+
+const Opcode = enum(u3) {
     op_mov,
     op_add,
     op_neg,
@@ -141,7 +162,7 @@ const Opcodes = enum(u3) {
     op_nor,
 };
 
-const Registers = enum(u2) {
+const Register = enum(u2) {
     a,
     b,
     c,
@@ -149,36 +170,10 @@ const Registers = enum(u2) {
 };
 
 const Instruction = struct {
-    opcode: Opcodes,
-    reg_w: Registers,
+    opcode: Opcode,
+    reg_w: Register,
     deref_r: bool,
-    reg_r: Registers,
-};
-
-const MemoryMap = enum(u16) {
-    // read: reads 1 if input has a byte available, 0 otherwise
-    char_in_ready = max_memory,
-    // read: reads LSB from input (stdin), clears MSB, blocks
-    char_in,
-    // write: writes LSB to output (stdout)
-    char_out,
-    // read/write: stores least significant word of the 24-bit seek address
-    seek_lsw,
-    // read/write: stores most significant byte of the 24-bit seek address
-    seek_msb,
-    // read/write: stores the chunk size for storage access
-    chunk_size,
-    // write: writes a chunk from storage at the seek address to memory at the
-    // given address
-    storage_in,
-    // write: writes chunk from memory at the given address at the seek address
-    // in storage
-    storage_out,
-    //read: reads 1 if storage is attached, 0 otherwise
-    storage_attached,
-    // halts the system
-    halt = 0xffff,
-    _,
+    reg_r: Register,
 };
 
 const MmioState = struct {
@@ -186,8 +181,8 @@ const MmioState = struct {
     running: bool,
     seek_address: u24,
     chunk_size: u16,
-    storage_file: std.fs.File,
-    storage_attached: bool,
+    storage_files: []std.fs.File,
+    storage_index: u16,
     memory: []u8,
 };
 
@@ -196,7 +191,12 @@ fn mmio(
     optional_value: ?u16, // null on reads
     state: *MmioState,
 ) !?u16 {
-    switch (@as(MemoryMap, @enumFromInt(address))) {
+    const storage_file = if (state.storage_files.len > 0)
+        state.storage_files[state.storage_index]
+    else
+        undefined;
+
+    switch (@as(Mmio, @enumFromInt(address))) {
         .char_in_ready => {
             if (builtin.target.os.tag == .windows) {
                 const stdin_handle = std.io.getStdIn().handle;
@@ -210,7 +210,7 @@ fn mmio(
                 if (event_count == 0) {
                     return 0;
                 } else {
-                    var peek_buffer = try state.allocator.alloc(
+                    const peek_buffer = try state.allocator.alloc(
                         c.INPUT_RECORD,
                         event_count,
                     );
@@ -292,9 +292,9 @@ fn mmio(
         },
         .storage_in => {
             if (optional_value) |value| {
-                if (state.storage_attached) {
-                    try state.storage_file.seekTo(state.seek_address);
-                    const amount_read = try state.storage_file.reader().readAll(
+                if (state.storage_files.len > 0) {
+                    try storage_file.seekTo(state.seek_address);
+                    const amount_read = try storage_file.reader().readAll(
                         state.memory[value..@min(
                             state.memory.len,
                             state.chunk_size +| value,
@@ -323,7 +323,7 @@ fn mmio(
         },
         .storage_out => {
             if (optional_value) |value| {
-                if (state.storage_attached) {
+                if (state.storage_files.len > 0) {
                     // make sure not to write beyond max storage size
                     const actual_chunk_size: u16 =
                         if (@as(u32, state.seek_address) + state.chunk_size > max_storage)
@@ -331,8 +331,8 @@ fn mmio(
                     else
                         state.chunk_size;
 
-                    try state.storage_file.seekTo(state.seek_address);
-                    try state.storage_file.writer().writeAll(
+                    try storage_file.seekTo(state.seek_address);
+                    try storage_file.writer().writeAll(
                         state.memory[value..@min(
                             state.memory.len,
                             actual_chunk_size +| value,
@@ -341,9 +341,17 @@ fn mmio(
                 }
             }
         },
-        .storage_attached => {
+        .storage_count => {
             if (optional_value == null) {
-                return @intFromBool(state.storage_attached);
+                return @intCast(state.storage_files.len);
+            }
+        },
+        .storage_index => {
+            if (optional_value) |value| {
+                state.storage_index = if (value < 4)
+                    value
+                else
+                    undefined;
             }
         },
         _ => return null,
@@ -353,7 +361,7 @@ fn mmio(
 }
 
 fn setRegister(
-    id: Registers,
+    id: Register,
     value: u16,
     cmp_flag: *bool, // result of op_cmp, true if pc is not writable
     registers: *[4]u16,
@@ -370,7 +378,7 @@ fn setRegister(
 }
 
 fn getRegister(
-    id: Registers,
+    id: Register,
     registers: [4]u16,
 ) u16 {
     return registers[@intFromEnum(id)];
@@ -395,13 +403,13 @@ fn parseInstruction(byte: u8) Instruction {
 }
 
 fn getRValue(
-    reg_r: Registers,
+    reg_r: Register,
     deref_r: bool,
     memory: []u8,
     registers: *[4]u16,
     state: *MmioState,
 ) !u16 {
-    const pc = @intFromEnum(Registers.pc); // for register access
+    const pc = @intFromEnum(Register.pc); // for register access
     var r_value = getRegister(reg_r, registers.*);
 
     if (deref_r) {
@@ -447,10 +455,10 @@ fn flushStdin() !void {
 fn interpret(
     memory: []u8,
     allocator: std.mem.Allocator,
-    storage: ?std.fs.File,
+    storage: []std.fs.File,
     debugger: bool,
 ) !void {
-    const pc = @intFromEnum(Registers.pc); // for register access
+    const pc = @intFromEnum(Register.pc); // for register access
     var registers: [4]u16 = .{undefined} ** 4;
     registers[pc] = 0;
 
@@ -461,8 +469,8 @@ fn interpret(
         .running = true,
         .seek_address = 0,
         .chunk_size = 0,
-        .storage_file = storage orelse undefined,
-        .storage_attached = storage != null,
+        .storage_files = storage,
+        .storage_index = 0,
         .memory = memory,
     };
 
@@ -577,7 +585,7 @@ fn interpret(
                 );
 
                 if (@as(i16, @bitCast(r_value)) < 0) {
-                    const shift_amount = std.math.absCast(@as(i16, @bitCast(r_value)));
+                    const shift_amount = @abs(@as(i16, @bitCast(r_value)));
 
                     if (shift_amount > 15) {
                         w_value = 0; // all bits shifted out
@@ -600,7 +608,7 @@ fn interpret(
                 );
             },
             .op_and => {
-                var w_value = getRegister(
+                const w_value = getRegister(
                     instruction.reg_w,
                     registers,
                 );
@@ -615,7 +623,7 @@ fn interpret(
                 );
             },
             .op_nor => {
-                var w_value = getRegister(
+                const w_value = getRegister(
                     instruction.reg_w,
                     registers,
                 );
@@ -631,4 +639,17 @@ fn interpret(
             },
         }
     }
+}
+
+fn printUsage(
+    output: std.fs.File,
+    args0: []const u8,
+    err_msg: []const u8,
+) !void {
+    try output.writer().print(
+        \\Usage:
+        \\{s} <memory_file> [-s storage_file]... [-d]
+        \\{s}
+        \\
+    , .{ args0, err_msg });
 }
