@@ -28,7 +28,12 @@ virtual at 0xfff0
 	.halt? = 0xffff
 end virtual
 
-stack_base = 0xFFFE
+stack_base? = 0xFFEE
+
+macro halt?
+	movi a, mmio.halt
+	mov a, a
+end macro
 
 ; jump
 macro jmp? src
@@ -113,6 +118,10 @@ end macro
 
 ; src is offset into the stack
 macro peek? dest, src
+	if dest eq pc
+		err 'can not peek into pc'
+	end if
+
 	mov dest, c
 	add dest, src
 	mov dest, *dest
@@ -120,6 +129,10 @@ end macro
 
 ; imm is offset into the stack
 macro peeki? dest, imm
+	if dest eq pc
+		err 'can not peeki into pc'
+	end if
+
 	mov dest, c
 	addi dest, imm
 	mov dest, *dest
@@ -147,6 +160,30 @@ macro calli? imm
 	ret_addr:
 end macro
 
-macro ret?
+macro ret? src
+	local skip, continue
+
+	jmpi continue
+	jmpi skip
+	continue:
+
+	add c, src
+	add c, src		; twice because each stack element is 2 bytes
 	pop pc
+
+	skip:
+end macro
+
+macro ret? imm
+	local skip, continue
+
+	jmpi continue
+	jmpi skip
+	continue:
+
+	add c, imm
+	add c, imm		; twice because each stack element is 2 bytes
+	pop pc
+
+	skip:
 end macro

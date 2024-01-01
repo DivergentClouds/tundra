@@ -155,10 +155,15 @@ tundra-extra.inc includes tundra-core along with the following macros ('src'
 marks a register that may be dereferenced, 'dest' marks one that may not be,
 and 'imm' marks a 16-bit immediate:
 
+	; halts execution
+	HALT
+
 	; moves a register to PC
+	; has no effect if CMP flag is set
 	JMP src
 
 	; moves an immediate to PC
+	; has no effect if CMP flag is set
 	JMPI imm
 
 	; jump to src if dest1 and dest2 are equal
@@ -176,7 +181,7 @@ and 'imm' marks a 16-bit immediate:
 	; this macro must be called before the first time a macro that uses the stack
 	; 	is called
 	; macros that use the stack reserve C as the stack pointer
-	; sets C to 0xFFEE
+	; sets C to STACK_BASE
 	STACK_INIT
 
 	; pushes a register to the stack
@@ -186,15 +191,18 @@ and 'imm' marks a 16-bit immediate:
 	PUSHI imm
 	
 	; pops an element from the stack into dest
+	; has no effect if CMP flag is set and dest is PC
 	POP dest
 
 	; removes the top element of the stack
 	DROP
 
 	; copies a value that is src items deep in the stack to dest
+	; dest may not be PC
 	PEEK dest, src
 
 	; copies a value that is imm items deep in the stack to dest
+	; dest may not be PC
 	PEEKI dest, imm
 
 	; pushes the next address to the stack and jumps to the value of src
@@ -205,8 +213,13 @@ and 'imm' marks a 16-bit immediate:
 	; has no effect if CMP flag is set
 	CALLI src
 
-	; pops an element of the stack into PC
-	RET
+	; drops src elements from the stack before popping an element into PC 
+	; has no effect if CMP flag is set
+	RET src
+
+	; drops imm elements from the stack before popping an element into PC 
+	; has no effect if CMP flag is set
+	RETI imm
 
 in addition, tundra-extra.inc defines following constants:
 
@@ -233,6 +246,8 @@ in addition, tundra-extra.inc defines following constants:
 	MMIO.STORAGE_INDEX = 0xFFF9
 
 	MMIO.HALT = 0xFFFF
+
+	STACK_BASE = 0xFFEE
 
 
 License
