@@ -35,6 +35,7 @@ pub fn main() !void {
     var memory_name: ?[]const u8 = null;
     var storage_names = std.ArrayList([]const u8).init(allocator);
     defer storage_names.deinit();
+
     var debugger_mode = false;
 
     const args0 = args.next() orelse
@@ -94,6 +95,7 @@ pub fn main() !void {
     _ = try memory_file.readAll(memory);
 
     var storage_files = std.ArrayList(std.fs.File).init(allocator);
+    defer storage_files.deinit();
 
     defer for (storage_files.items) |file| {
         file.close();
