@@ -160,30 +160,39 @@ macro calli? imm
 	ret_addr:
 end macro
 
-macro ret? src
+macro ret? dest, src
+	if dest eq pc
+		err 'can not ret with dest as pc'
+	end if
+
 	local skip, continue
 
 	jmpi continue
 	jmpi skip
 	continue:
 
+	pop dest
 	add c, src
 	add c, src		; twice because each stack element is 2 bytes
-	pop pc
+	mov pc, dest
 
 	skip:
 end macro
 
-macro ret? imm
+macro reti? dest, imm
+	if dest eq pc
+		err 'can not reti with dest as pc'
+	end if
 	local skip, continue
 
 	jmpi continue
 	jmpi skip
 	continue:
 
+	pop dest
 	add c, imm
 	add c, imm		; twice because each stack element is 2 bytes
-	pop pc
+	mov pc, dest
 
 	skip:
 end macro
