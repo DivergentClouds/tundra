@@ -321,6 +321,7 @@ fn mmio(
                         0,
                     );
                 }
+                state.seek_address +%= state.chunk_size;
             }
         },
         .storage_out => {
@@ -340,6 +341,7 @@ fn mmio(
                             actual_chunk_size +| value,
                         )],
                     );
+                    state.seek_address +%= state.chunk_size;
                 }
             }
         },
