@@ -32,7 +32,7 @@ stack_base? = 0xFFEE
 
 macro halt?
 	movi a, mmio.halt
-	mov a, a
+	sto a, a
 end macro
 
 ; jump
@@ -124,6 +124,7 @@ macro peek? dest, src
 
 	mov dest, c
 	add dest, src
+	add dest, src
 	mov dest, *dest
 end macro
 
@@ -135,11 +136,44 @@ macro peeki? dest, imm
 
 	mov dest, c
 	addi dest, imm
+	addi dest, imm
 	mov dest, *dest
 end macro
 
-macro drop?
-	addi c, 2
+; dest is offset into stack, src is value to poke
+macro poke? dest, src
+	add c, dest
+	add c, dest
+	
+	sto c, src
+
+	neg dest, dest
+	add c, dest
+	add c, dest
+	neg dest, dest
+end macro
+
+; dest is offset into stack, imm is value to poke
+macro pokei? dest, imm
+	add c, src
+	add c, src
+	
+	stoi c, imm
+
+	neg src, src
+	add c, src
+	add c, src
+	neg src, src
+end macro
+
+macro drop? src
+	add c, src
+	add c, src
+end macro
+
+macro dropi? imm
+	addi c, imm
+	addi c, imm
 end macro
 
 macro call? src
@@ -147,7 +181,7 @@ macro call? src
 
 	pushi ret_addr
 	jmp src
-	drop			; if cmp caused jump to be skipped, drop return address
+	dropi 1			; if cmp caused jump to be skipped, drop return address
 	ret_addr:
 end macro
 
@@ -156,7 +190,7 @@ macro calli? imm
 
 	pushi ret_addr
 	jmpi imm
-	drop			; if cmp caused jump to be skipped, drop return address
+	dropi 1		; if cmp caused jump to be skipped, drop return address
 	ret_addr:
 end macro
 
@@ -172,9 +206,8 @@ macro ret? dest, src
 	continue:
 
 	pop dest
-	add c, src
-	add c, src		; twice because each stack element is 2 bytes
-	mov pc, dest
+	drop src
+	jmp dest
 
 	skip:
 end macro
@@ -190,9 +223,8 @@ macro reti? dest, imm
 	continue:
 
 	pop dest
-	add c, imm
-	add c, imm		; twice because each stack element is 2 bytes
-	mov pc, dest
+	dropi imm
+	jmp dest
 
 	skip:
 end macro

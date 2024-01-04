@@ -90,7 +90,7 @@ Memory Map
 | 0xfff7  | write      | write a chunk from memory at the  |
 |         |            | the given address into storage at |
 |         |            | the seek address, increment seek  |
-|         |            | address by chunk size             |
+|         |            | address by chunk size             |                 |
 |---------|------------|-----------------------------------|
 | 0xfff8  | read       | reads the number of attached      |
 |         |            | storage devices                   |
@@ -196,8 +196,11 @@ and 'imm' marks a 16-bit immediate:
 	; has no effect if CMP flag is set and dest is PC
 	POP dest
 
-	; removes the top element of the stack
-	DROP
+	; removes the top src elements of the stack
+	DROP src
+
+	; removes the top imm elements of the stack
+	DROPI imm
 
 	; copies a value that is src items deep in the stack to dest
 	; dest may not be PC
@@ -215,15 +218,13 @@ and 'imm' marks a 16-bit immediate:
 	; has no effect if CMP flag is set
 	CALLI src
 
-	; POPs into dest, then DROPs src elements followed by a JMP to dest
+	; drops src elements from the stack before popping an element into PC 
 	; has no effect if CMP flag is set
-	; dest may not be PC
-	RET dest, src
+	RET src
 
-	; POPs into dest, then DROPs imm elements followed by a JMP to dest
+	; drops imm elements from the stack before popping an element into PC 
 	; has no effect if CMP flag is set
-	; dest may not be PC
-	RETI dest, imm
+	RETI imm
 
 in addition, tundra-extra.inc defines following constants:
 

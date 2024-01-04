@@ -9,7 +9,7 @@ const c =
 else
     undefined;
 
-const reserved_mmio_space = 0x20; // reserved space at the top of memory for mmio
+const reserved_mmio_space = 0x10; // reserved space at the top of memory for mmio
 const max_memory = 0x1_0000 - reserved_mmio_space;
 const max_storage = 0xff_ffff;
 
