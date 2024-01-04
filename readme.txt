@@ -90,7 +90,7 @@ Memory Map
 | 0xfff7  | write      | write a chunk from memory at the  |
 |         |            | the given address into storage at |
 |         |            | the seek address, increment seek  |
-|         |            | address by chunk size             |                 |
+|         |            | address by chunk size             |
 |---------|------------|-----------------------------------|
 | 0xfff8  | read       | reads the number of attached      |
 |         |            | storage devices                   |
