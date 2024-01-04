@@ -490,6 +490,10 @@ fn interpret(
             return error.EnteredMMIOSpace;
         }
 
+        if (debugger) {
+            try print("{x:0>4}: ", .{registers[pc] -% 1});
+        }
+
         const r_value =
             try getRValue(
             instruction.reg_r,
@@ -500,16 +504,18 @@ fn interpret(
         );
 
         if (debugger) {
-            std.debug.print("{x:0>4}: {s} {s: >2} ({x:0>4}), {s}{s: <2} ({x:0>4})\n", .{
-                registers[pc] -% 1,
+            try print("{s} {s: >2} ({x:0>4}), {s}{s: <2} ({x:0>4})\n", .{
                 @tagName(instruction.opcode)[3..],
                 @tagName(instruction.reg_w),
                 registers[@intFromEnum(instruction.reg_w)],
                 if (instruction.deref_r) "*" else "",
                 @tagName(instruction.reg_r),
-                registers[@intFromEnum(instruction.reg_r)],
+                if (instruction.reg_r == .pc)
+                    registers[@intFromEnum(Register.pc)] -% 2
+                else
+                    registers[@intFromEnum(instruction.reg_r)],
             });
-            if (instruction.deref_r) std.debug.print(
+            if (instruction.deref_r) try print(
                 "                     [{x:0>4}{s}]\n",
                 .{
                     r_value,
@@ -656,4 +662,10 @@ fn printUsage(
         \\{s}
         \\
     , .{ args0, err_msg });
+}
+
+fn print(comptime format: []const u8, args: anytype) !void {
+    const stderr = std.io.getStdErr().writer();
+
+    try stderr.print(format, args);
 }
