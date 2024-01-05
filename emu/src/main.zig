@@ -156,7 +156,7 @@ const Mmio = enum(u16) {
 const Opcode = enum(u3) {
     op_mov,
     op_add,
-    op_neg,
+    op_mul,
     op_sto,
     op_cmp,
     op_shf,
@@ -542,7 +542,7 @@ fn interpret(
                     registers,
                 );
 
-                const value: u16 = @bitCast(w_value +% r_value);
+                const value = w_value +% r_value;
 
                 setRegister(
                     instruction.reg_w,
@@ -551,10 +551,13 @@ fn interpret(
                     &registers,
                 );
             },
-            .op_neg => {
-                const value: u16 = @bitCast(
-                    0 - @as(i16, @bitCast(r_value)),
+            .op_mul => {
+                const w_value = getRegister(
+                    instruction.reg_w,
+                    registers,
                 );
+
+                const value = w_value *% r_value;
 
                 setRegister(
                     instruction.reg_w,

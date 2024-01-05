@@ -147,23 +147,23 @@ macro poke? dest, src
 	
 	sto c, src
 
-	neg dest, dest
+	muli dest, -1
 	add c, dest
 	add c, dest
-	neg dest, dest
+	muli dest, -1
 end macro
 
 ; dest is offset into stack, imm is value to poke
 macro pokei? dest, imm
-	add c, src
-	add c, src
+	add c, dest
+	add c, dest
 	
 	stoi c, imm
 
-	neg src, src
-	add c, src
-	add c, src
-	neg src, src
+	muli dest, -1
+	add c, dest
+	add c, dest
+	muli dest, -1
 end macro
 
 macro drop? src

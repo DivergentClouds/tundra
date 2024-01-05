@@ -35,7 +35,7 @@ Instructions
 ------------
 MOV = 000 WW DRR // set W to R
 ADD = 001 WW DRR // set W to W+R (signed)
-NEG = 010 WW DRR // set W to 0-R (signed)
+MUL = 010 WW DRR // set W to W*R (signed)
 STO = 011 WW DRR // store R at memory[W] and memory[W + 1]
 CMP = 100 WW DRR // if W is greater than R (signed), ignore the next attempt to
 	modify PC, otherwise allow the next attempt to modify the PC, the PC is
