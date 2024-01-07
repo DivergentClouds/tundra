@@ -43,7 +43,7 @@ CMP = 100 WW DRR // if W is greater than R (signed), ignore the next attempt to
 SHF = 101 WW DRR // set W to W bitshifted by R bits
 	(leftshift if R is negative, rightshift if R is positive)
 AND = 110 WW DRR // set W to R&W
-NOR = 111 WW DRR // set W to ~(R|W)
+XOR = 111 WW DRR // set W to ~(R|W)
 
 
 Notes

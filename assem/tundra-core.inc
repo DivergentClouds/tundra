@@ -67,5 +67,5 @@ macro_gen_opcode
     cmp, 100b
     shf, 101b
     and, 110b
-    nor, 111b
+    xor, 111b
 macro_gen_opcode_end

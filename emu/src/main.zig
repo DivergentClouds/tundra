@@ -161,7 +161,7 @@ const Opcode = enum(u3) {
     op_cmp,
     op_shf,
     op_and,
-    op_nor,
+    op_xor,
 };
 
 const Register = enum(u2) {
@@ -635,13 +635,13 @@ fn interpret(
                     &registers,
                 );
             },
-            .op_nor => {
+            .op_xor => {
                 const w_value = getRegister(
                     instruction.reg_w,
                     registers,
                 );
 
-                const value = ~(r_value | w_value);
+                const value = r_value ^ w_value;
 
                 setRegister(
                     instruction.reg_w,
