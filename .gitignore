@@ -1,3 +1,4 @@
 **/zig-out/*
 **/zig-cache/*
-**/test-progs/*
+test-progs/*
+assem/examples/assembled/*

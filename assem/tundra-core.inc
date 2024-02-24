@@ -61,11 +61,11 @@ end macro
 
 macro_gen_opcode
     mov, 000b
-    add, 001b
-    mul, 010b
-    sto, 011b
-    cmp, 100b
-    shf, 101b
-    and, 110b
+    sto, 001b
+    add, 010b
+    cmp, 011b
+    shf, 100b
+    and, 101b
+    nor, 110b
     xor, 111b
 macro_gen_opcode_end

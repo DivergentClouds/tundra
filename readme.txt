@@ -34,16 +34,18 @@ Dereferenced registers
 Instructions
 ------------
 MOV = 000 WW DRR // set W to R
-ADD = 001 WW DRR // set W to W+R (signed)
-MUL = 010 WW DRR // set W to W*R (signed)
-STO = 011 WW DRR // store R at memory[W] and memory[W + 1]
-CMP = 100 WW DRR // if W is greater than R (signed), ignore the next attempt to
+STO = 001 WW DRR // store R starting at memory[W] 
+ADD = 010 WW DRR // set W to W+R (wrapping)
+CMP = 011 WW DRR // if W is greater than R (signed), ignorethe next attempt to
 	modify PC, otherwise allow the next attempt to modify the PC, the PC is
 	mutable by default
-SHF = 101 WW DRR // set W to W bitshifted by R bits
-	(leftshift if R is negative, rightshift if R is positive)
-AND = 110 WW DRR // set W to R&W
-XOR = 111 WW DRR // set W to ~(R|W)
+SHF = 100 WW DRR // set W to W bitshifted by (R & 0xf) bits,
+  if bit 4 of R is set, shift left, otherwise shift right,
+  if bit 5 of R is set, perform a rotation rather than a shift,
+  if bit 6 of R is set, sign extend the result, incompatible with bits 4 and 5
+AND = 101 WW DRR // set W to R&W
+NOR = 110 WW DRR // set W to ~(R|W)
+XOR = 111 WW DRR // set W to R^W
 
 
 Notes
@@ -110,7 +112,7 @@ Notes
 - attempting to read undefined storage will read 0
 - seek address and chunk size default to 0
 - only the 24-bit address range of storage may be written to
-- if EOF is recieved when reading input, then 0 will be read
+- if EOF is recieved when reading input, then -1 will be read
 
 
 Emulator
@@ -155,16 +157,51 @@ Tundra-Extra
 ------------
 tundra-extra.inc includes tundra-core along with the following macros ('src'
 marks a register that may be dereferenced, 'dest' marks one that may not be,
-and 'imm' marks a 16-bit immediate:
+and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
+'dest' may not be 'pc'):
 
 	; halts execution
 	HALT
 
-	; moves a register to PC
-	; has no effect if CMP flag is set
+  ; set dest to the bitwise not of dest
+  NOT dest
+
+  ; set dest to the bitwise or dest and src
+  OR dest, src
+
+  ; set dest to the bitwise or dest and imm
+  ORI dest, imm
+
+  ; set dest to dest bitshifted to the right by imm, shifting in 0s
+  SHRI dest, imm
+
+  ; set dest to dest bitshifted to the left by imm, shifting in 0s
+  SHLI dest, imm
+
+  ; set dest to dest bitshifted to the right by imm, shifting in copies of the
+  ; sign bit
+  ASRI dest, imm
+
+  ; set dest to dest rotated to the right by imm
+  RTRI dest, imm
+
+  ; set dest to dest rotated to the left by imm
+  RTLI dest, imm
+
+  ; set dest to the two's complement negation of dest
+  NEG dest
+
+  ; subtract src from dest
+  SUB dest, src
+
+  ; subtract imm from dest
+  SUBI dest, imm
+
+	; set PC to src
+  ; has no effect if CMP flag is set
 	JMP src
 
-	; moves an immediate to PC
+	; set PC to imm
 	; has no effect if CMP flag is set
 	JMPI imm
 
@@ -180,50 +217,70 @@ and 'imm' marks a 16-bit immediate:
 	; jump to imm if dest1 and dest2 are not equal
 	JNEI, dest1, dest2, imm
 
+	; jump to src2 if dest and src1 are equal, assert dest and src1 are positive
+	JEQP dest, src1, src2
+
+	; jump to imm if dest and src are equal, assert dest and src are positive
+	JEQPRI dest, src, imm
+
+	; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are positive
+	JEQPI dest, imm1, imm2
+
+	; jump to src2 if dest is not equal to src1, assert dest and src1 are positive
+	JNEP dest, src1, src2
+
+	; jump to imm if dest is not equal to src, assert dest and src are positive
+	JNEPRI dest, src, imm
+
+	; jump to imm2 if dest is not equal to imm1, assert dest and imm1 are positive
+	JNEPI  dest, imm1, imm2
+
 	; this macro must be called before the first time a macro that uses the stack
 	; 	is called
 	; macros that use the stack reserve C as the stack pointer
 	; sets C to STACK_BASE
 	STACK_INIT
 
-	; pushes a register to the stack
-	PUSH src
+	; push src to the stack
+  PUSH src
 
-	; pushes an immediate to the stack
+	; push imm to the stack
 	PUSHI imm
 	
-	; pops an element from the stack into dest
-	; has no effect if CMP flag is set and dest is PC
+	; pop a word from the stack into dest
 	POP dest
 
-	; removes the top src elements of the stack
+  ; pop a word of the stack into PC
+  POPJ
+
+	; remove the top src bytes of the stack
 	DROP src
 
-	; removes the top imm elements of the stack
+	; remove the top imm bytes of the stack
 	DROPI imm
 
-	; copies a value that is src items deep in the stack to dest
-	; dest may not be PC
+	; copy a value that is src items deep in the stack to dest
 	PEEK dest, src
 
-	; copies a value that is imm items deep in the stack to dest
-	; dest may not be PC
+	; copy a value that is imm items deep in the stack to dest
 	PEEKI dest, imm
 
-	; pushes the next address to the stack and jumps to the value of src
+	; push the next address to the stack and jumps to the value of src
 	; has no effect if CMP flag is set
 	CALL src
 	
-	; pushes the next address to the stack and jumps to the value of imm
+	; push the next address to the stack and jumps to the value of imm
 	; has no effect if CMP flag is set
 	CALLI src
 
-	; drops src elements from the stack before popping an element into PC 
-	; has no effect if CMP flag is set
+	; pop a word into dest before dropping src bytes from the stack followed by
+  ; jumping to dest
+  ; has no effect if CMP flag is set
 	RET src
 
-	; drops imm elements from the stack before popping an element into PC 
-	; has no effect if CMP flag is set
+	; pop a word into dest before dropping imm bytes from the stack followed by
+  ; jumping to dest
+  ; has no effect if CMP flag is set
 	RETI imm
 
 in addition, tundra-extra.inc defines following constants:

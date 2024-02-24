@@ -25,7 +25,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
-    if (target.isWindows()) {
+    if (target.result.os.tag == .windows) {
         exe.linkLibC();
     }
 

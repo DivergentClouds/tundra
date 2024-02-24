@@ -155,12 +155,12 @@ const Mmio = enum(u16) {
 
 const Opcode = enum(u3) {
     op_mov,
-    op_add,
-    op_mul,
     op_sto,
+    op_add,
     op_cmp,
     op_shf,
     op_and,
+    op_nor,
     op_xor,
 };
 
@@ -257,7 +257,7 @@ fn mmio(
         },
         .char_in => {
             if (optional_value == null) {
-                return std.io.getStdIn().reader().readByte() catch 0xff;
+                return std.io.getStdIn().reader().readByte() catch 0xffff;
             }
         },
         .char_out => {
@@ -448,11 +448,21 @@ fn flushStdin() !void {
             return error.CouldNotFlushInput;
         }
     } else {
-        const flags = try std.os.fcntl(stdin_handle, std.os.F.GETFL, 0);
-        _ = try std.os.fcntl(stdin_handle, std.os.F.SETFL, flags | std.os.O.NONBLOCK);
+        var pfd = [1]std.os.pollfd{
+            .{
+                .fd = std.os.STDIN_FILENO,
+                .events = std.os.POLL.IN,
+                .revents = undefined,
+            },
+        };
 
-        var buffer: [256]u8 = undefined;
-        while (try stdin.reader().read(&buffer) != 0) {}
+        // only error that is possible here is running out of mem
+        _ = std.os.poll(&pfd, 0) catch {};
+
+        if ((pfd[0].revents & std.os.POLL.IN) != 0) {
+            var buffer: [256]u8 = undefined;
+            while (try stdin.reader().read(&buffer) != 0) {}
+        }
     }
 }
 
@@ -551,21 +561,6 @@ fn interpret(
                     &registers,
                 );
             },
-            .op_mul => {
-                const w_value = getRegister(
-                    instruction.reg_w,
-                    registers,
-                );
-
-                const value = w_value *% r_value;
-
-                setRegister(
-                    instruction.reg_w,
-                    value,
-                    &cmp_flag,
-                    &registers,
-                );
-            },
             .op_sto => {
                 const w_value = getRegister(
                     instruction.reg_w,
@@ -597,19 +592,27 @@ fn interpret(
                     registers,
                 );
 
-                if (@as(i16, @bitCast(r_value)) < 0) {
-                    const shift_amount = @abs(@as(i16, @bitCast(r_value)));
+                const shift_value: u4 = @truncate(r_value);
+                const do_left = r_value & 0b1_0000 != 0;
+                const do_rotate = r_value & 0b10_0000 != 0;
+                const do_sign_extend = r_value & 0b100_0000 != 0;
 
-                    if (shift_amount > 15) {
-                        w_value = 0; // all bits shifted out
+                // left vs right shift
+                if (do_left) {
+                    if (do_rotate) {
+                        w_value = std.math.rotl(u16, w_value, shift_value);
                     } else {
-                        w_value <<= @truncate(shift_amount);
+                        w_value <<= shift_value;
                     }
                 } else {
-                    if (r_value > 15) {
-                        w_value = 0; // all bits shifted out
+                    if (do_rotate) {
+                        w_value = std.math.rotr(u16, w_value, shift_value);
+                    } else if (do_sign_extend) {
+                        w_value = @bitCast(
+                            @divTrunc(@as(i16, @bitCast(w_value)), (@as(i16, 1) << shift_value)),
+                        );
                     } else {
-                        w_value >>= @truncate(r_value);
+                        w_value >>= shift_value;
                     }
                 }
 
@@ -627,6 +630,21 @@ fn interpret(
                 );
 
                 const value = r_value & w_value;
+
+                setRegister(
+                    instruction.reg_w,
+                    value,
+                    &cmp_flag,
+                    &registers,
+                );
+            },
+            .op_nor => {
+                const w_value = getRegister(
+                    instruction.reg_w,
+                    registers,
+                );
+
+                const value = ~(r_value | w_value);
 
                 setRegister(
                     instruction.reg_w,

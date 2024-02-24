@@ -16,7 +16,7 @@ main:
 ; puts(str: [*:0]u8) void
 puts:
 	.loop:
-	peeki b, 2
+	peeki b, 4
 
 	mov b, *b
 	andi b, 0xff
@@ -28,14 +28,14 @@ puts:
 	movi a, mmio.write_char
 	sto a, b
 
-	movi a, 2
+	movi a, 4
 	peek b, a
 	addi b, 1
 	poke a, b
 	jmpi .loop
 
 	.end:
-	reti b, 1
+	reti b, 2
 
 data:
 .hello:
