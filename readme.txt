@@ -37,8 +37,8 @@ MOV = 000 WW DRR // set W to R
 STO = 001 WW DRR // store R starting at memory[W] 
 ADD = 010 WW DRR // set W to W+R (wrapping)
 CMP = 011 WW DRR // if W is greater than R (signed), ignorethe next attempt to
-	modify PC, otherwise allow the next attempt to modify the PC, the PC is
-	mutable by default
+  modify PC, otherwise allow the next attempt to modify the PC, the PC is
+  mutable by default
 SHF = 100 WW DRR // set W to W bitshifted by (R & 0xf) bits,
   if bit 4 of R is set, shift left, otherwise shift right,
   if bit 5 of R is set, perform a rotation rather than a shift,
@@ -108,7 +108,7 @@ Notes
 -----
 - addresses 0xfff0 and above are reserved for mmio and may not be executed
 - attempting to read/write memory in and above the mmio range via storage access
-	is a no-op
+  is a no-op
 - attempting to read undefined storage will read 0
 - seek address and chunk size default to 0
 - only the 24-bit address range of storage may be written to
@@ -120,7 +120,7 @@ Emulator
 
 Usage
 -----
-	tundra <memory_file> [[-s storage_file] ...] [-d]
+  tundra <memory_file> [[-s storage_file] ...] [-d]
 
 Notes
 -----
@@ -145,12 +145,12 @@ Tundra-Core
 tundra-core.inc includes the instruction set along with macros that treat R as
 an immediate. To use them, suffix an instruction name with 'I'. As an example:
 
-	MOVI A, -1
+  MOVI A, -1
 
 is equivalent to:
 
-	MOV A, *PC
-	0xFFFF
+  MOV A, *PC
+  0xFFFF
 
 
 Tundra-Extra
@@ -160,8 +160,8 @@ marks a register that may be dereferenced, 'dest' marks one that may not be,
 and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
 'dest' may not be 'pc'):
 
-	; halts execution
-	HALT
+  ; halts execution
+  HALT
 
   ; set dest to the bitwise not of dest
   NOT dest
@@ -197,119 +197,119 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; subtract imm from dest
   SUBI dest, imm
 
-	; set PC to src
+  ; set PC to src
   ; has no effect if CMP flag is set
-	JMP src
+  JMP src
 
-	; set PC to imm
-	; has no effect if CMP flag is set
-	JMPI imm
+  ; set PC to imm
+  ; has no effect if CMP flag is set
+  JMPI imm
 
-	; jump to src if dest1 and dest2 are equal
-	JEQ dest1, dest2, src
+  ; jump to src if dest1 and dest2 are equal
+  JEQ dest1, dest2, src
 
-	; jump to imm if dest1 and dest2 are equal
-	JEQI dest1, dest2, imm
+  ; jump to imm if dest1 and dest2 are equal
+  JEQI dest1, dest2, imm
 
-	; jump to src if dest1 and dest2 are not equal
-	JNE dest1, dest2, src
+  ; jump to src if dest1 and dest2 are not equal
+  JNE dest1, dest2, src
 
-	; jump to imm if dest1 and dest2 are not equal
-	JNEI, dest1, dest2, imm
+  ; jump to imm if dest1 and dest2 are not equal
+  JNEI, dest1, dest2, imm
 
-	; jump to src2 if dest and src1 are equal, assert dest and src1 are positive
-	JEQP dest, src1, src2
+  ; jump to src2 if dest and src1 are equal, assert dest and src1 are positive
+  JEQP dest, src1, src2
 
-	; jump to imm if dest and src are equal, assert dest and src are positive
-	JEQPRI dest, src, imm
+  ; jump to imm if dest and src are equal, assert dest and src are positive
+  JEQPRI dest, src, imm
 
-	; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are positive
-	JEQPI dest, imm1, imm2
+  ; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are positive
+  JEQPI dest, imm1, imm2
 
-	; jump to src2 if dest is not equal to src1, assert dest and src1 are positive
-	JNEP dest, src1, src2
+  ; jump to src2 if dest is not equal to src1, assert dest and src1 are positive
+  JNEP dest, src1, src2
 
-	; jump to imm if dest is not equal to src, assert dest and src are positive
-	JNEPRI dest, src, imm
+  ; jump to imm if dest is not equal to src, assert dest and src are positive
+  JNEPRI dest, src, imm
 
-	; jump to imm2 if dest is not equal to imm1, assert dest and imm1 are positive
-	JNEPI  dest, imm1, imm2
+  ; jump to imm2 if dest is not equal to imm1, assert dest and imm1 are positive
+  JNEPI  dest, imm1, imm2
 
-	; this macro must be called before the first time a macro that uses the stack
-	; 	is called
-	; macros that use the stack reserve C as the stack pointer
-	; sets C to STACK_BASE
-	STACK_INIT
+  ; set C to STACK_BASE
+  ; this macro must be called before the first time a macro that uses the stack
+  ; is called
+  ; macros that use the stack reserve C as the stack pointer
+  STACK_INIT
 
-	; push src to the stack
+  ; push src to the stack
   PUSH src
 
-	; push imm to the stack
-	PUSHI imm
-	
-	; pop a word from the stack into dest
-	POP dest
+  ; push imm to the stack
+  PUSHI imm
+  
+  ; pop a word from the stack into dest
+  POP dest
 
   ; pop a word of the stack into PC
   POPJ
 
-	; remove the top src bytes of the stack
-	DROP src
+  ; remove the top src bytes of the stack
+  DROP src
 
-	; remove the top imm bytes of the stack
-	DROPI imm
+  ; remove the top imm bytes of the stack
+  DROPI imm
 
-	; copy a value that is src items deep in the stack to dest
-	PEEK dest, src
+  ; copy a value that is src items deep in the stack to dest
+  PEEK dest, src
 
-	; copy a value that is imm items deep in the stack to dest
-	PEEKI dest, imm
+  ; copy a value that is imm items deep in the stack to dest
+  PEEKI dest, imm
 
-	; push the next address to the stack and jumps to the value of src
-	; has no effect if CMP flag is set
-	CALL src
-	
-	; push the next address to the stack and jumps to the value of imm
-	; has no effect if CMP flag is set
-	CALLI src
+  ; push the next address to the stack and jumps to the value of src
+  ; has no effect if CMP flag is set
+  CALL src
+  
+  ; push the next address to the stack and jumps to the value of imm
+  ; has no effect if CMP flag is set
+  CALLI src
 
-	; pop a word into dest before dropping src bytes from the stack followed by
+  ; pop a word into dest before dropping src bytes from the stack followed by
   ; jumping to dest
   ; has no effect if CMP flag is set
-	RET src
+  RET src
 
-	; pop a word into dest before dropping imm bytes from the stack followed by
+  ; pop a word into dest before dropping imm bytes from the stack followed by
   ; jumping to dest
   ; has no effect if CMP flag is set
-	RETI imm
+  RETI imm
 
 in addition, tundra-extra.inc defines following constants:
 
-	MMIO = 0xFFF0
+  MMIO = 0xFFF0
 
-	MMIO.INPUT_AVAILABLE = 0xFFF0
+  MMIO.INPUT_AVAILABLE = 0xFFF0
 
-	MMIO.READ_CHAR = 0xFFF1
+  MMIO.READ_CHAR = 0xFFF1
 
-	MMIO.WRITE_CHAR = 0xFFF2
+  MMIO.WRITE_CHAR = 0xFFF2
 
-	MMIO.SEEK_LSW = 0xFFF3
+  MMIO.SEEK_LSW = 0xFFF3
 
-	MMIO.SEEK_MSB = 0xFFF4
+  MMIO.SEEK_MSB = 0xFFF4
 
-	MMIO.CHUNK_SIZE = 0xFFF5
+  MMIO.CHUNK_SIZE = 0xFFF5
 
-	MMIO.READ_CHUNK = 0xFFF6
+  MMIO.READ_CHUNK = 0xFFF6
 
-	MMIO.WRITE_CHUNK = 0xFFF7
+  MMIO.WRITE_CHUNK = 0xFFF7
 
-	MMIO.STORAGE_COUNT = 0xFFF8
+  MMIO.STORAGE_COUNT = 0xFFF8
 
-	MMIO.STORAGE_INDEX = 0xFFF9
+  MMIO.STORAGE_INDEX = 0xFFF9
 
-	MMIO.HALT = 0xFFFF
+  MMIO.HALT = 0xFFFF
 
-	STACK_BASE = 0xFFEE
+  STACK_BASE = 0xFFEE
 
 
 License
@@ -318,6 +318,6 @@ License
 Notes
 -----
 - the contents of this repository are licensed under the 3-Clause BSD license
-	unless otherwise specified
+  unless otherwise specified
 - tundra-core.inc and tundra-extra.inc are licensed under the 0-Clause BSD
-	license
+  license
