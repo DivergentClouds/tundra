@@ -36,7 +36,7 @@ Instructions
 MOV = 000 WW DRR // set W to R
 STO = 001 WW DRR // store R starting at memory[W] 
 ADD = 010 WW DRR // set W to W+R (wrapping)
-CMP = 011 WW DRR // if W is greater than R (signed), ignorethe next attempt to
+CMP = 011 WW DRR // if W is greater than R (signed), ignore the next attempt to
   modify PC, otherwise allow the next attempt to modify the PC, the PC is
   mutable by default
 SHF = 100 WW DRR // set W to W bitshifted by (R & 0xf) bits,
@@ -158,7 +158,7 @@ Tundra-Extra
 tundra-extra.inc includes tundra-core along with the following macros ('src'
 marks a register that may be dereferenced, 'dest' marks one that may not be,
 and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
-'dest' may not be 'pc'):
+'dest' may not be 'pc'.) registers marked 'dest' may be modified by the macro:
 
   ; halts execution
   HALT
@@ -226,19 +226,11 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are positive
   JEQPI dest, imm1, imm2
 
-  ; jump to src2 if dest is not equal to src1, assert dest and src1 are positive
-  JNEP dest, src1, src2
-
-  ; jump to imm if dest is not equal to src, assert dest and src are positive
-  JNEPRI dest, src, imm
-
-  ; jump to imm2 if dest is not equal to imm1, assert dest and imm1 are positive
-  JNEPI  dest, imm1, imm2
-
   ; set C to STACK_BASE
   ; this macro must be called before the first time a macro that uses the stack
   ; is called
   ; macros that use the stack reserve C as the stack pointer
+  ; you may access the stack pointer with SP once initialized
   STACK_INIT
 
   ; push src to the stack
@@ -265,13 +257,19 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; copy a value that is imm items deep in the stack to dest
   PEEKI dest, imm
 
-  ; push the next address to the stack and jumps to the value of src
+  ; push the next address to the stack and jump to src
   ; has no effect if CMP flag is set
   CALL src
   
-  ; push the next address to the stack and jumps to the value of imm
+  ; push the next address to the stack and jump to imm
   ; has no effect if CMP flag is set
   CALLI src
+
+  ; call imm if dest and src are equal, assert dest and src are positive
+  CEQPRI dest, src, imm
+
+  ; call imm2 if dest and imm1 are equal, assert dest and src are positive
+  CEQPI dest, imm1, imm2
 
   ; pop a word into dest before dropping src bytes from the stack followed by
   ; jumping to dest
@@ -310,6 +308,9 @@ in addition, tundra-extra.inc defines following constants:
   MMIO.HALT = 0xFFFF
 
   STACK_BASE = 0xFFEE
+
+  ; the following is only defined once STACK_INIT is run
+  SP = C
 
 
 License

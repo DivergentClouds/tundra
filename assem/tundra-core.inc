@@ -46,7 +46,7 @@ macro macro_gen_opcode
                         err "invalid src operand"
                     end if
                 end match
-                
+
                 db (op shl 5) + (destreg shl 3) + (deref shl 2) + (srcreg)
             end macro
 

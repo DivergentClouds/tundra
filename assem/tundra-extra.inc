@@ -14,30 +14,30 @@
 include 'tundra-core.inc'
 
 virtual at 0xfff0
-	mmio?:
-	.input_available? = 0xfff0
-	.read_char? = 0xfff1
-	.write_char? = 0xfff2
-	.seek_lsw? = 0xfff3
-	.seek_msb? = 0xfff4
-	.chunk_size? = 0xfff5
-	.read_chunk? = 0xfff6
-	.write_chunk? = 0xfff7
-	.storage_count? = 0xfff8
-	.storage_index? = 0xfff9
-	.halt? = 0xffff
+  mmio?:
+  .input_available? = 0xfff0
+  .read_char? = 0xfff1
+  .write_char? = 0xfff2
+  .seek_lsw? = 0xfff3
+  .seek_msb? = 0xfff4
+  .chunk_size? = 0xfff5
+  .read_chunk? = 0xfff6
+  .write_chunk? = 0xfff7
+  .storage_count? = 0xfff8
+  .storage_index? = 0xfff9
+  .halt? = 0xffff
 end virtual
 
 stack_base? = 0xFFEE
 
 ; for internal use, makes sure a valid register is given
 macro internal_assert_not_reg? reg1, reg2
-	assert `reg1 <> `reg2
+  assert `reg1 <> `reg2
 end macro
 
 macro halt?
-	movi a, mmio.halt
-	sto a, a
+  movi a, mmio.halt
+  sto a, a
 end macro
 
 macro not? dest
@@ -127,74 +127,62 @@ end macro
 macro jmp? src
   internal_assert_not_reg src, *pc
 
- 	mov pc, src
+   mov pc, src
 end macro
 
 ; jump immediate
 macro jmpi? imm
- 	movi pc, imm
+   movi pc, imm
 end macro
 
 ; jump if equal
-macro jeq? dest1, dest2, src
-  internal_assert_not_reg src, *pc
-  internal_assert_not_reg dest1, pc
-  internal_assert_not_reg dest2, pc
+macro jeq? dest, src1, src2
+  internal_assert_not_reg dest, pc
+  internal_assert_not_reg src1, *pc
+  internal_assert_not_reg src2, *pc
 
- 	local next, skip
+  xor dest, src1
+  addi dest, 0x8000    ; smallest signed 16 bit value
+  cmpi dest, 0x8000
 
-	cmp dest1, dest2
-	jmpi next ; dest1 <= dest2
-
-	jmpi skip ; dest1 > dest2
-
-	next:
-	cmp dest2, dest1
-	jmp src ; dest2 <= dest1 -> dest1 == dest2
-
-	skip:
+  jmp src2
 end macro
 
-; jump if equal immediate
-macro jeqi? dest1, dest2, imm
-  internal_assert_not_reg dest1, pc
-  internal_assert_not_reg dest2, pc
+; jump if equal
+macro jeqi? dest, src, imm
+  internal_assert_not_reg dest, pc
+  internal_assert_not_reg src, *pc
 
- 	local next, skip
+  xor dest, src
+  addi dest, 0x8000    ; smallest signed 16 bit value
+  cmpi dest, 0x8000
 
-	cmp dest1, dest2
-	jmpi next ; dest1 <= dest2
-
-	jmpi skip ; dest1 > dest2
-
-	next:
-	cmp dest2, dest1
-	jmpi imm; dest2 <= dest1 -> dest1 == dest2
-
-	skip:
+  jmpi imm
 end macro
 
 ; jump if not equal
-macro jne? dest1, dest2, src
-  internal_assert_not_reg src, *pc
+macro jne? dest, src1, src2
   internal_assert_not_reg dest, pc
+  internal_assert_not_reg src1, *pc
+  internal_assert_not_reg src2, *pc
 
- 	local skip
+  xor dest, src1
+  addi dest, 0x7fff     ; 0 becomes largest signed 16 bit value
+  cmpi dest, 0x7ffe     ; don't jump if larger aka if dest == src1
 
-	jeqi dest1, dest2, skip
-	jmp src
-	skip:
+  jmp src2
 end macro
 
-; jump if not equal immediate
-macro jnei? dest1, dest2, imm
-  internal_assert_not_reg dest1, pc
-  internal_assert_not_reg dest2, pc
- 	local skip
+; jump if not equal, immediate
+macro jnei? dest, src, imm
+  internal_assert_not_reg dest, pc
+  internal_assert_not_reg src, *pc
 
-	jeqi dest1, dest2, skip
-	jmpi imm
-	skip:
+  xor dest, src
+  addi dest, 0x7fff     ; 0 becomes largest signed 16 bit value
+  cmpi dest, 0x7ffe     ; don't jump if larger aka if dest == src1
+
+  jmpi imm
 end macro
 
 ; jump to src2 if equal; assert positive
@@ -203,9 +191,9 @@ macro jeqp? dest, src1, src2
   internal_assert_not_reg src2, *pc
   internal_assert_not_reg dest, pc
 
- 	xor dest, src1
-	cmpi dest, 0
-	jmp src2
+  xor dest, src1
+  cmpi dest, 0
+  jmp src2
 end macro
 
 ; jump to imm if equal; assert positive
@@ -213,94 +201,50 @@ macro jeqpri? dest, src, imm
   internal_assert_not_reg src, *pc
   internal_assert_not_reg dest, pc
 
- 	xor dest, src
-	cmpi dest, 0
-	jmpi imm
+  xor dest, src
+  cmpi dest, 0
+  jmpi imm
 end macro
 
 ; jump to imm2 if dest and imm1 equal; assert positive
 macro jeqpi? dest, imm1, imm2
   internal_assert_not_reg dest, pc
 
- 	xori dest, imm1
-	cmpi dest, 0
-	jmpi imm2
-end macro
-
-; jump to src2 if not equal; assert positive
-macro jnep? dest, src1, src2
-  internal_assert_not_reg src1, *pc
-  internal_assert_not_reg src2, *pc
-  internal_assert_not_reg dest, pc
-
- 	local skip
-
-	xori dest, src1
-	cmpi dest, 0
-	jmpi skip
-	jmp src2
-
-	skip:
-end macro
-
-; jump to imm if not equal; assert positive
-macro jnepri? dest, src, imm
-  internal_assert_not_reg src, *pc
-  internal_assert_not_reg dest, pc
-
- 	local skip
-
-	xor dest, src
-	cmpi dest, 0
-	jmpi skip
-	jmpi imm
-
-	skip:
-end macro
-
-; jump to imm2 if dest and imm1 not equal; assert positive
-macro jnepi? dest, imm1, imm2
-  internal_assert_not_reg dest, pc
-
- 	local skip
-
-	xori dest, imm1
-	cmpi dest, 0
-	jmpi skip
-	jmpi imm2
-
-	skip:
+  xori dest, imm1
+  cmpi dest, 0
+  jmpi imm2
 end macro
 
 ; must be called before other stack macros
 ; reserves C for use as the stack pointer
 macro stack_init?
-	movi c, stack_base
+  sp? = c
+  movi sp, stack_base
 end macro
 
 macro push? src
   internal_assert_not_reg src, *pc
 
- 	sto c, src
-	addi c, -2
+   sto sp, src
+  addi sp, -2
 end macro
 
 macro pushi? imm
-	stoi c, imm
-	addi c, -2
+  stoi sp, imm
+  addi sp, -2
 end macro
 
 macro pop? dest
   ; see popj to pop into pc
   internal_assert_not_reg dest, pc
 
-	addi c, 2
-	mov dest, *c
+  addi sp, 2
+  mov dest, *sp
 end macro
 
 macro popj?
-  addi c, 2
-  jmp *c
+  addi sp, 2
+  jmp *sp
 end macro
 
 ; src is offset into the stack
@@ -308,95 +252,112 @@ macro peek? dest, src
   internal_assert_not_reg src, *pc
   internal_assert_not_reg dest, pc
 
-	mov dest, c
-	add dest, src
-	mov dest, *dest
+  mov dest, sp
+  add dest, src
+  mov dest, *dest
 end macro
 
 ; imm is offset into the stack
 macro peeki? dest, imm
   internal_assert_not_reg dest, pc
 
-	mov dest, c
-	addi dest, imm
-	mov dest, *dest
+  mov dest, sp
+  addi dest, imm
+  mov dest, *dest
 end macro
 
 ; dest is offset into stack, src is value to poke
 macro poke? dest, src
   internal_assert_not_reg src, *pc
 
-	add c, dest
-	sto c, src
-  sub c, dest
+  add sp, dest
+  sto sp, src
+  sub sp, dest
 end macro
 
 ; dest is offset into stack, imm is value to poke
 macro pokei? dest, imm
-	add c, dest
-	stoi c, imm
-  sub c, dest
+  add sp, dest
+  stoi sp, imm
+  sub sp, dest
 end macro
 
 macro drop? src
   internal_assert_not_reg src, *pc
 
-  add c, src
+  add sp, src
 end macro
 
 macro dropi? imm
-	addi c, imm
+  addi sp, imm
 end macro
 
 macro call? src
   internal_assert_not_reg src, *pc
 
-	local ret_addr
+  local ret_addr
 
-	pushi ret_addr
-	jmp src
-	dropi 2			; if cmp caused jump to be skipped, drop return address
-	ret_addr:
+  pushi ret_addr
+  jmp src
+  dropi 2               ; if cmp caused jump to be skipped, drop return address
+  ret_addr:
 end macro
 
 macro calli? imm
-	local ret_addr
+  local ret_addr
 
-	pushi ret_addr
-	jmpi imm
-	dropi 2		; if cmp caused jump to be skipped, drop return address
-	ret_addr:
+  pushi ret_addr
+  jmpi imm
+  dropi 2               ; if cmp caused jump to be skipped, drop return address
+  ret_addr:
+end macro
+
+macro ceqpri? dest, src, imm
+  internal_assert_not_reg src, *pc
+  internal_assert_not_reg dest, pc
+
+  xor dest, src
+  cmpi dest, 0
+  calli imm
+end macro
+
+macro ceqpi? dest, imm1, imm2
+  internal_assert_not_reg dest, pc
+
+  xor dest, imm1
+  cmpi dest, 0
+  calli imm2
 end macro
 
 macro ret? dest, src
   internal_assert_not_reg src, *pc
-	internal_assert_not_reg dest, pc
+  internal_assert_not_reg dest, pc
 
-	local skip, continue
+  local skip, continue
 
-	jmpi continue
-	jmpi skip
-	continue:
+  jmpi continue
+  jmpi skip
+  continue:
 
-	pop dest
-	drop src
-	jmp dest
+  pop dest
+  drop src
+  jmp dest
 
-	skip:
+  skip:
 end macro
 
 macro reti? dest, imm
-	internal_assert_not_reg dest, pc
+  internal_assert_not_reg dest, pc
 
-	local skip, continue
+  local skip, continue
 
-	jmpi continue
-	jmpi skip
-	continue:
+  jmpi continue
+  jmpi skip
+  continue:
 
-	pop dest
-	dropi imm
-	jmp dest
+  pop dest
+  dropi imm
+  jmp dest
 
-	skip:
+  skip:
 end macro
