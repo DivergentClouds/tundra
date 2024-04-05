@@ -148,7 +148,7 @@ macro jeq? dest, src1, src2
   jmp src2
 end macro
 
-; jump if equal
+; jump if equal, immediate
 macro jeqi? dest, src, imm
   internal_assert_not_reg dest, pc
   internal_assert_not_reg src, *pc
@@ -312,21 +312,67 @@ macro calli? imm
   ret_addr:
 end macro
 
+; call if equal, register, immediate
+macro ceqri? dest, src, imm
+  internal_assert_not_reg src, *pc
+  internal_assert_not_reg dest, pc
+
+  xori dest, imm1
+  addi dest, 0x8000    ; smallest signed 16 bit value
+  cmpi dest, 0x8000
+  
+  calli imm2
+end macro
+
+; call if equal, immediate
+macro ceqi? dest, imm1, imm2
+  internal_assert_not_reg dest, pc
+
+  xori dest, imm1
+  addi dest, 0x8000    ; smallest signed 16 bit value
+  cmpi dest, 0x8000
+  
+  calli imm2
+end macro
+
 macro ceqpri? dest, src, imm
   internal_assert_not_reg src, *pc
   internal_assert_not_reg dest, pc
 
   xor dest, src
   cmpi dest, 0
+
   calli imm
 end macro
 
 macro ceqpi? dest, imm1, imm2
   internal_assert_not_reg dest, pc
 
-  xor dest, imm1
+  xori dest, imm1
   cmpi dest, 0
+
   calli imm2
+end macro
+
+macro cnei? dest, imm1, imm2
+  internal_assert_not_reg dest, pc
+
+  xori dest, imm1
+  addi dest, 0x7fff
+  cmpi dest, 0x7ffe
+
+  calli imm2
+end macro
+
+macro cneri? dest, src, imm
+  internal_assert_not_reg src, *pc
+  internal_assert_not_reg dest, pc
+
+  xor dest, src
+  addi dest, 0x7fff
+  cmpi dest, 0x7ffe
+
+  calli imm
 end macro
 
 macro ret? dest, src
@@ -349,15 +395,19 @@ end macro
 macro reti? dest, imm
   internal_assert_not_reg dest, pc
 
-  local skip, continue
+  if imm = 0
+    popj
+  else
+    local skip, continue
 
-  jmpi continue
-  jmpi skip
-  continue:
+    jmpi continue
+    jmpi skip
+    continue:
 
-  pop dest
-  dropi imm
-  jmp dest
+    pop dest
+    dropi imm
+    jmp dest
 
-  skip:
+    skip:
+  end if
 end macro

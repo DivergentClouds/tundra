@@ -243,6 +243,7 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   POP dest
 
   ; pop a word of the stack into PC
+  ; has no effect if CMP flag is set
   POPJ
 
   ; remove the top src bytes of the stack
@@ -264,6 +265,18 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; push the next address to the stack and jump to imm
   ; has no effect if CMP flag is set
   CALLI src
+
+  ; call imm if dest and src are equal
+  CEQRI dest, src, imm
+
+  ; call imm2 if dest and imm1 are not equal
+  CNEI dest, imm1, imm2
+
+  ; call imm if dest and src are not equal
+  CNERI dest, src, imm
+
+  ; call imm2 if dest and imm1 are equal
+  CEQI dest, imm1, imm2
 
   ; call imm if dest and src are equal, assert dest and src are positive
   CEQPRI dest, src, imm
