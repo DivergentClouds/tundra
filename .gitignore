@@ -1,4 +1,5 @@
-**/zig-out/*
-**/zig-cache/*
-test-progs/*
-assem/examples/assembled/*
+**/zig-out
+**/zig-cache
+test-progs
+assem/examples/assembled
+assem/wip
