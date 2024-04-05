@@ -58,7 +58,7 @@ macro ori? dest, imm
   internal_assert_not_reg dest, pc
 
   nori dest, imm
-  neg dest
+  not dest
 end macro
 
 macro shri? dest, imm
