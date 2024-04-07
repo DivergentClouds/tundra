@@ -224,8 +224,11 @@ fn mmio(
                         _ = c._getch();
                         return 0xffff;
                     } else {
-                        if (char == '\r')
+                        if (char == '\r') {
                             char = '\n';
+                        } else if (char == '\n') {
+                            char = '\r';
+                        }
                         return @intCast(char);
                     }
                 } else {
@@ -237,7 +240,7 @@ fn mmio(
                         }
                     }
 
-                    if (char == 0x7f) { // have backspace send backspace ascii
+                    if (char == 0x7f) { // have pressing backspace send backspace ascii
                         char = 0x08;
                     }
 
