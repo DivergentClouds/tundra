@@ -2,7 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const c =
-    if (builtin.target.os.tag == .windows)
+    if (builtin.os.tag == .windows)
     @cImport({
         @cInclude("windows.h");
         @cInclude("conio.h");
@@ -21,7 +21,7 @@ pub fn main() !void {
             .never_unmap = true,
             .retain_metadata = true,
         }){}
-    else if (builtin.target.os.tag == .windows)
+    else if (builtin.os.tag == .windows)
         std.heap.HeapAllocator.init()
     else
         std.heap.GeneralPurposeAllocator(.{}){};
@@ -177,7 +177,7 @@ const Instruction = struct {
     reg_r: Register,
 };
 
-const MmioState = switch (builtin.target.os.tag) {
+const MmioState = switch (builtin.os.tag) {
     .windows => struct {
         allocator: std.mem.Allocator,
         running: bool,
@@ -214,7 +214,7 @@ fn mmio(
     switch (@as(Mmio, @enumFromInt(address))) {
         .char_in => {
             if (optional_value == null) {
-                if (builtin.target.os.tag == .windows) {
+                if (builtin.os.tag == .windows) {
                     if (!c._kbhit()) {
                         return 0xffff;
                     }
@@ -422,7 +422,7 @@ fn getRValue(
 
 fn flushStdin(state: MmioState) !void {
     const stdin_handle = state.stdin_handle;
-    if (builtin.target.os.tag == .windows) {
+    if (builtin.os.tag == .windows) {
         if (c.FlushConsoleInputBuffer(@intCast(stdin_handle)) == 0) {
             return error.CouldNotFlushInput;
         }
@@ -442,7 +442,7 @@ fn interpret(
     registers[pc] = 0;
 
     var cmp_flag = false;
-    const stdin_handle: i64 = if (builtin.target.os.tag == .windows)
+    const stdin_handle: i64 = if (builtin.os.tag == .windows)
         std.os.windows.STD_INPUT_HANDLE
     else
         std.io.getStdIn().handle;
@@ -458,13 +458,13 @@ fn interpret(
         .stdin_handle = stdin_handle,
     };
 
-    if (builtin.target.os.tag != .windows)
+    if (builtin.os.tag != .windows)
         state.original_termios = try std.posix.tcgetattr(@intCast(state.stdin_handle));
 
     // attempt to flush any remaining stdin characters
     defer flushStdin(state) catch {};
 
-    if (builtin.target.os.tag != .windows) {
+    if (builtin.os.tag != .windows) {
         var raw = state.original_termios;
         raw.lflag.ECHO = false;
         raw.lflag.ICANON = false;
