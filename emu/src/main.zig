@@ -423,7 +423,7 @@ fn getRValue(
 fn flushStdin(state: MmioState) !void {
     const stdin_handle = state.stdin_handle;
     if (builtin.os.tag == .windows) {
-        if (c.FlushConsoleInputBuffer(&stdin_handle) == 0) {
+        if (c.FlushConsoleInputBuffer(stdin_handle) == 0) {
             return error.CouldNotFlushInput;
         }
     } else {
