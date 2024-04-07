@@ -186,7 +186,7 @@ const MmioState = switch (builtin.target.os.tag) {
         storage_files: []std.fs.File,
         storage_index: u16,
         memory: []u8,
-        stdin_handle: i32,
+        stdin_handle: i64,
     },
     else => struct {
         allocator: std.mem.Allocator,
@@ -196,7 +196,7 @@ const MmioState = switch (builtin.target.os.tag) {
         storage_files: []std.fs.File,
         storage_index: u16,
         memory: []u8,
-        stdin_handle: i32,
+        stdin_handle: i64,
         original_termios: std.posix.termios = undefined,
     },
 };
@@ -424,11 +424,11 @@ fn flushStdin(state: MmioState) !void {
     const stdin = std.io.getStdIn();
     const stdin_handle = stdin.handle;
     if (builtin.target.os.tag == .windows) {
-        if (c.FlushConsoleInputBuffer(stdin_handle) == 0) {
+        if (c.FlushConsoleInputBuffer(@intCast(stdin_handle)) == 0) {
             return error.CouldNotFlushInput;
         }
     } else {
-        try std.posix.tcsetattr(stdin_handle, .FLUSH, state.original_termios);
+        try std.posix.tcsetattr(@intCast(stdin_handle), .FLUSH, state.original_termios);
     }
 }
 
@@ -443,7 +443,7 @@ fn interpret(
     registers[pc] = 0;
 
     var cmp_flag = false;
-    const stdin_handle = if (builtin.target.os.tag == .windows)
+    const stdin_handle: i64 = if (builtin.target.os.tag == .windows)
         std.os.windows.STD_INPUT_HANDLE
     else
         std.io.getStdIn().handle;
@@ -460,7 +460,7 @@ fn interpret(
     };
 
     if (builtin.target.os.tag != .windows)
-        state.original_termios = try std.posix.tcgetattr(stdin_handle);
+        state.original_termios = try std.posix.tcgetattr(@intCast(state.stdin_handle));
 
     // attempt to flush any remaining stdin characters
     defer flushStdin(state) catch {};
@@ -472,7 +472,7 @@ fn interpret(
 
         raw.cc[@intFromEnum(std.posix.V.TIME)] = 1;
         raw.cc[@intFromEnum(std.posix.V.MIN)] = 0;
-        try std.posix.tcsetattr(state.stdin_handle, .FLUSH, raw);
+        try std.posix.tcsetattr(@intCast(state.stdin_handle), .FLUSH, raw);
     }
 
     while (state.running) {
