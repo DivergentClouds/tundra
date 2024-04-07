@@ -215,7 +215,7 @@ fn mmio(
         .char_in => {
             if (optional_value == null) {
                 if (builtin.os.tag == .windows) {
-                    if (!c._kbhit()) {
+                    if (c._kbhit() == 0) {
                         return 0xffff;
                     }
                     const char = c._getch();
@@ -224,7 +224,7 @@ fn mmio(
                         _ = c._getch();
                         return 0xffff;
                     } else {
-                        return char;
+                        return @intCast(char);
                     }
                 } else {
                     var char: u16 = std.io.getStdIn().reader().readByte() catch 0xffff;
@@ -421,9 +421,9 @@ fn getRValue(
 }
 
 fn flushStdin(state: MmioState) !void {
-    const stdin_handle = state.stdin_handle;
+    var stdin_handle = state.stdin_handle;
     if (builtin.os.tag == .windows) {
-        if (c.FlushConsoleInputBuffer(stdin_handle) == 0) {
+        if (c.FlushConsoleInputBuffer(&stdin_handle) == 0) {
             return error.CouldNotFlushInput;
         }
     } else {
