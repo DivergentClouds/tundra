@@ -443,7 +443,10 @@ fn interpret(
     registers[pc] = 0;
 
     var cmp_flag = false;
-    const stdin_handle = std.io.getStdIn().handle;
+    const stdin_handle = if (builtin.target.os.tag == .windows)
+        std.os.windows.STD_INPUT_HANDLE
+    else
+        std.io.getStdIn().handle;
 
     var state: MmioState = .{
         .allocator = allocator,
