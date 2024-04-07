@@ -218,12 +218,14 @@ fn mmio(
                     if (c._kbhit() == 0) {
                         return 0xffff;
                     }
-                    const char = c._getch();
+                    var char = c._getch();
 
                     if (char == 0 or char == 0xe0) { // function or arrow key
                         _ = c._getch();
                         return 0xffff;
                     } else {
+                        if (char == '\r')
+                            char = '\n';
                         return @intCast(char);
                     }
                 } else {
@@ -233,6 +235,10 @@ fn mmio(
                         while (char != 0xffff) {
                             char = std.io.getStdIn().reader().readByte() catch 0xffff;
                         }
+                    }
+
+                    if (char == 0x7f) { // have backspace send backspace ascii
+                        char = 0x08;
                     }
 
                     return char;
