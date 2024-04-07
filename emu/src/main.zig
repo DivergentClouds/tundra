@@ -177,16 +177,28 @@ const Instruction = struct {
     reg_r: Register,
 };
 
-const MmioState = struct {
-    allocator: std.mem.Allocator,
-    running: bool,
-    seek_address: u24,
-    chunk_size: u16,
-    storage_files: []std.fs.File,
-    storage_index: u16,
-    memory: []u8,
-    stdin_handle: i32,
-    original_termios: std.posix.termios = undefined,
+const MmioState = switch (builtin.target.os.tag) {
+    .windows => struct {
+        allocator: std.mem.Allocator,
+        running: bool,
+        seek_address: u24,
+        chunk_size: u16,
+        storage_files: []std.fs.File,
+        storage_index: u16,
+        memory: []u8,
+        stdin_handle: i32,
+    },
+    else => struct {
+        allocator: std.mem.Allocator,
+        running: bool,
+        seek_address: u24,
+        chunk_size: u16,
+        storage_files: []std.fs.File,
+        storage_index: u16,
+        memory: []u8,
+        stdin_handle: i32,
+        original_termios: std.posix.termios = undefined,
+    },
 };
 
 fn mmio(
@@ -442,9 +454,10 @@ fn interpret(
         .storage_index = 0,
         .memory = memory,
         .stdin_handle = stdin_handle,
-        .original_termios = if (builtin.target.os.tag != .windows)
-            try std.posix.tcgetattr(stdin_handle),
     };
+
+    if (builtin.target.os.tag != .windows)
+        state.original_termios = try std.posix.tcgetattr(stdin_handle);
 
     // attempt to flush any remaining stdin characters
     defer flushStdin(state) catch {};
