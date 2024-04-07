@@ -421,8 +421,7 @@ fn getRValue(
 }
 
 fn flushStdin(state: MmioState) !void {
-    const stdin = std.io.getStdIn();
-    const stdin_handle = stdin.handle;
+    const stdin_handle = state.stdin_handle;
     if (builtin.target.os.tag == .windows) {
         if (c.FlushConsoleInputBuffer(@intCast(stdin_handle)) == 0) {
             return error.CouldNotFlushInput;
