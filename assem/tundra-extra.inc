@@ -15,16 +15,15 @@ include 'tundra-core.inc'
 
 virtual at 0xfff0
   mmio?:
-  .input_available? = 0xfff0
-  .read_char? = 0xfff1
-  .write_char? = 0xfff2
-  .seek_lsw? = 0xfff3
-  .seek_msb? = 0xfff4
-  .chunk_size? = 0xfff5
-  .read_chunk? = 0xfff6
-  .write_chunk? = 0xfff7
-  .storage_count? = 0xfff8
-  .storage_index? = 0xfff9
+  .read_char? = 0xfff0
+  .write_char? = 0xfff1
+  .seek_lsw? = 0xfff2
+  .seek_msb? = 0xfff3
+  .chunk_size? = 0xfff4
+  .read_chunk? = 0xfff5
+  .write_chunk? = 0xfff6
+  .storage_count? = 0xfff7
+  .storage_index? = 0xfff8
   .halt? = 0xffff
 end virtual
 

@@ -5,6 +5,7 @@ const c =
     if (builtin.target.os.tag == .windows)
     @cImport({
         @cInclude("windows.h");
+        @cInclude("conio.h");
     })
 else
     undefined;
@@ -101,11 +102,11 @@ pub fn main() !void {
         file.close();
     };
 
-    if (storage_names.items.len > 3) {
+    if (storage_names.items.len > 4) {
         printUsage(
             std.io.getStdErr(),
             args0,
-            "Expect at most 3 storage files, when more were given",
+            "Expect at most 4 storage files, when more were given",
         ) catch {};
         return error.TooManyStorageFiles;
     }
@@ -126,10 +127,8 @@ pub fn main() !void {
 }
 
 const Mmio = enum(u16) {
-    /// read: reads 1 if input has a byte available, 0 otherwise
-    char_in_ready = 0xfff0,
     /// read: reads LSB from input (stdin), clears MSB, blocks
-    char_in,
+    char_in = 0xfff0,
     /// write: writes LSB to output (stdout)
     char_out,
     /// read/write: stores least significant word of the 24-bit seek address
@@ -186,6 +185,8 @@ const MmioState = struct {
     storage_files: []std.fs.File,
     storage_index: u16,
     memory: []u8,
+    stdin_handle: i32,
+    original_termios: std.posix.termios = undefined,
 };
 
 fn mmio(
@@ -199,65 +200,31 @@ fn mmio(
         undefined;
 
     switch (@as(Mmio, @enumFromInt(address))) {
-        .char_in_ready => {
-            if (builtin.target.os.tag == .windows) {
-                const stdin_handle = std.io.getStdIn().handle;
-
-                var event_count: u32 = 0;
-
-                if (c.GetNumberOfConsoleInputEvents(stdin_handle, &event_count) == 0) {
-                    return error.WinCouldNotCountInputEvents;
-                }
-
-                if (event_count == 0) {
-                    return 0;
-                } else {
-                    const peek_buffer = try state.allocator.alloc(
-                        c.INPUT_RECORD,
-                        event_count,
-                    );
-                    defer state.allocator.free(peek_buffer);
-
-                    if (c.PeekConsoleInputA(
-                        stdin_handle,
-                        peek_buffer.ptr,
-                        @intCast(peek_buffer.len),
-                        &event_count,
-                    ) == 0) {
-                        return error.WinCouldNotPeekInput;
-                    }
-
-                    for (peek_buffer) |input_record| {
-                        const KEY_EVENT = 1;
-                        if (input_record.EventType != KEY_EVENT) continue;
-
-                        const char = input_record.Event.KeyEvent.uChar.AsciiChar;
-                        if (char == '\r') return 1;
-                    }
-                    return 0;
-                }
-            } else {
-                var pfd = [1]std.os.pollfd{
-                    .{
-                        .fd = std.os.STDIN_FILENO,
-                        .events = std.os.POLL.IN,
-                        .revents = undefined,
-                    },
-                };
-
-                // only error that is possible here is running out of mem
-                _ = std.os.poll(&pfd, 0) catch {};
-
-                if ((pfd[0].revents & std.os.POLL.IN) == 0) {
-                    return 0;
-                } else {
-                    return 1;
-                }
-            }
-        },
         .char_in => {
             if (optional_value == null) {
-                return std.io.getStdIn().reader().readByte() catch 0xffff;
+                if (builtin.target.os.tag == .windows) {
+                    if (!c._kbhit()) {
+                        return 0xffff;
+                    }
+                    const char = c._getch();
+
+                    if (char == 0 or char == 0xe0) { // function or arrow key
+                        _ = c._getch();
+                        return 0xffff;
+                    } else {
+                        return char;
+                    }
+                } else {
+                    var char: u16 = std.io.getStdIn().reader().readByte() catch 0xffff;
+
+                    if (char == 0x1b) { // skip escape sequences
+                        while (char != 0xffff) {
+                            char = std.io.getStdIn().reader().readByte() catch 0xffff;
+                        }
+                    }
+
+                    return char;
+                }
             }
         },
         .char_out => {
@@ -352,7 +319,8 @@ fn mmio(
         },
         .storage_index => {
             if (optional_value) |value| {
-                state.storage_index = if (value < 4)
+                state.storage_index =
+                    if (value <= 4)
                     value
                 else
                     undefined;
@@ -376,7 +344,7 @@ fn setRegister(
             return;
         }
         // stop crash when moving to mmio space
-        registers[@intFromEnum(id)] = @max(value, max_memory - 1);
+        registers[@intFromEnum(id)] = @min(value, max_memory - 1);
     }
     registers[@intFromEnum(id)] = value;
 }
@@ -440,7 +408,7 @@ fn getRValue(
     return r_value;
 }
 
-fn flushStdin() !void {
+fn flushStdin(state: MmioState) !void {
     const stdin = std.io.getStdIn();
     const stdin_handle = stdin.handle;
     if (builtin.target.os.tag == .windows) {
@@ -448,21 +416,7 @@ fn flushStdin() !void {
             return error.CouldNotFlushInput;
         }
     } else {
-        var pfd = [1]std.os.pollfd{
-            .{
-                .fd = std.os.STDIN_FILENO,
-                .events = std.os.POLL.IN,
-                .revents = undefined,
-            },
-        };
-
-        // only error that is possible here is running out of mem
-        _ = std.os.poll(&pfd, 0) catch {};
-
-        if ((pfd[0].revents & std.os.POLL.IN) != 0) {
-            var buffer: [256]u8 = undefined;
-            while (try stdin.reader().read(&buffer) != 0) {}
-        }
+        try std.posix.tcsetattr(stdin_handle, .FLUSH, state.original_termios);
     }
 }
 
@@ -477,6 +431,7 @@ fn interpret(
     registers[pc] = 0;
 
     var cmp_flag = false;
+    const stdin_handle = std.io.getStdIn().handle;
 
     var state: MmioState = .{
         .allocator = allocator,
@@ -486,10 +441,23 @@ fn interpret(
         .storage_files = storage,
         .storage_index = 0,
         .memory = memory,
+        .stdin_handle = stdin_handle,
+        .original_termios = if (builtin.target.os.tag != .windows)
+            try std.posix.tcgetattr(stdin_handle),
     };
 
     // attempt to flush any remaining stdin characters
-    defer flushStdin() catch {};
+    defer flushStdin(state) catch {};
+
+    if (builtin.target.os.tag != .windows) {
+        var raw = state.original_termios;
+        raw.lflag.ECHO = false;
+        raw.lflag.ICANON = false;
+
+        raw.cc[@intFromEnum(std.posix.V.TIME)] = 1;
+        raw.cc[@intFromEnum(std.posix.V.MIN)] = 0;
+        try std.posix.tcsetattr(state.stdin_handle, .FLUSH, raw);
+    }
 
     while (state.running) {
         const instruction = parseInstruction(memory[registers[pc]]);

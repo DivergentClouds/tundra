@@ -63,41 +63,39 @@ Memory Map
 |---------|------------|-----------------------------------|
 | address | read/write | effect                            |
 |---------|------------|-----------------------------------|
-| 0xfff0  | read       | reads 1 if input is available,    |
-|         |            | 0 otherwise                       |
+| 0xfff0  | read       | if input is available, then read  |
+|         |            | input into LSB, clearing MSB.     |
+|         |            | if input is not available, then   |
+|         |            | read -1                           |
 |---------|------------|-----------------------------------|
-| 0xfff1  | read       | waits until input is available,   |
-|         |            | then reads input into LSB,        |
-|         |            | clearing MSB                      |
+| 0xfff1  | write      | writes LSB to output              |
 |---------|------------|-----------------------------------|
-| 0xfff2  | write      | writes LSB to output              |
-|---------|------------|-----------------------------------|
-| 0xfff3  | read/write | stores the least significant word |
+| 0xfff2  | read/write | stores the least significant word |
 |         |            | of the 24-bit storage seek        |
 |         |            | address                           |
 |---------|------------|-----------------------------------|
-| 0xfff4  | read/write | stores LSB as the most            |
+| 0xfff3  | read/write | stores LSB as the most            |
 |         |            | significant byte of the 24-bit    |
 |         |            | storage seek address. reads into  |
 |         |            | LSB and clears MSB                |
 |---------|------------|-----------------------------------|
-| 0xfff5  | read/write | stores the chunk size for storage |
+| 0xfff4  | read/write | stores the chunk size for storage |
 |         |            | access                            |
 |---------|------------|-----------------------------------|
-| 0xfff6  | write      | write a chunk from storage at the |
+| 0xfff5  | write      | write a chunk from storage at the |
 |         |            | seek address into memory at the   |
 |         |            | given address, increment seek     |
 |         |            | address by chunk size             |
 |---------|------------|-----------------------------------|
-| 0xfff7  | write      | write a chunk from memory at the  |
+| 0xfff6  | write      | write a chunk from memory at the  |
 |         |            | the given address into storage at |
 |         |            | the seek address, increment seek  |
 |         |            | address by chunk size             |
 |---------|------------|-----------------------------------|
-| 0xfff8  | read       | reads the number of attached      |
+| 0xfff7  | read       | reads the number of attached      |
 |         |            | storage devices                   |
 |---------|------------|-----------------------------------|
-| 0xfff9  | write      | set which storage device to       |
+| 0xfff8  | write      | set which storage device to       |
 |         |            | access, 0-indexed.                |
 |---------|------------|-----------------------------------|
 | 0xffff  | write      | halt execution                    |
@@ -112,7 +110,7 @@ Notes
 - attempting to read undefined storage will read 0
 - seek address and chunk size default to 0
 - only the 24-bit address range of storage may be written to
-- if EOF is recieved when reading input, then -1 will be read
+- at most 4 storage devices may be attached
 
 
 Emulator
@@ -124,7 +122,6 @@ Usage
 
 Notes
 -----
-- at most 3 storage devices may be attached
 - if the '-d' flag is set, each instruction will be printed as it is run
 - enter must be pressed before input may be read
 
