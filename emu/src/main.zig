@@ -442,7 +442,7 @@ fn interpret(
     registers[pc] = 0;
 
     var cmp_flag = false;
-    const stdin_handle: i64 = if (builtin.os.tag == .windows)
+    const stdin_handle: i64 = comptime if (builtin.os.tag == .windows)
         std.os.windows.STD_INPUT_HANDLE
     else
         std.io.getStdIn().handle;
