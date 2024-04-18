@@ -654,7 +654,7 @@ fn interpret(
 
         raw.cc[@intFromEnum(std.posix.V.TIME)] = 1;
         raw.cc[@intFromEnum(std.posix.V.MIN)] = 0;
-        try std.posix.tcsetattr(@intCast(state.stdin_handle), .FLUSH, raw);
+        try std.posix.tcsetattr(@intCast(std.io.getStdIn().handle), .FLUSH, raw);
     }
 
     while (state.running) {
