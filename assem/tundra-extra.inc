@@ -173,7 +173,7 @@ macro jne? dest, src1, src2
 end macro
 
 ; jump if not equal, immediate
-macro jnei? dest, src, imm
+macro jneri? dest, src, imm
   internal_assert_not_reg dest, pc
   internal_assert_not_reg src, *pc
 
@@ -182,6 +182,17 @@ macro jnei? dest, src, imm
   cmpi dest, 0x7ffe     ; don't jump if larger aka if dest == src1
 
   jmpi imm
+end macro
+
+; jump if not equal, immediate
+macro jnei? dest, imm1, imm2
+  internal_assert_not_reg dest, pc
+
+  xori dest, imm1
+  addi dest, 0x7fff     ; 0 becomes largest signed 16 bit value
+  cmpi dest, 0x7ffe     ; don't jump if larger aka if dest == src1
+
+  jmpi imm2
 end macro
 
 ; jump to src2 if equal; assert positive

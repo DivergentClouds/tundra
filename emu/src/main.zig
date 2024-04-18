@@ -126,7 +126,7 @@ pub fn main() !void {
     );
 }
 
-const Mmio = enum(u16) {
+const MemoryMap = enum(u16) {
     /// read: reads LSB from input (stdin), clears MSB, blocks
     char_in = 0xfff0,
     /// write: writes LSB to output (stdout)
@@ -149,6 +149,27 @@ const Mmio = enum(u16) {
     storage_index,
     /// halts the system
     halt = 0xffff,
+    _,
+};
+
+const InputByte = enum(u8) {
+    up = 'i' + 0x80,
+    down = 'j' + 0x80,
+    left = 'k' + 0x80,
+    right = 'l' + 0x80,
+    insert = 'n' + 0x80,
+    delete = 'x' + 0x80,
+    home = 'h' + 0x80,
+    end = 'e' + 0x80,
+};
+
+const OutputByte = enum(u8) {
+    line_feed = 0x0a, // equivalent to down
+    carriage_return = 0x0d, // set cursor to an x position of 0
+    backspace = 0x08, // equivalent to left
+    //    clear_screen = 'X' + 0x80, // clear the screen
+    //    clear_remaining_line = 'C' + 0x80, // clear the line starting after the cursor
+    //    reset_cursor = 'R' + 0x80, // set cursor to 0, 0
     _,
 };
 
@@ -201,6 +222,101 @@ const MmioState = switch (builtin.os.tag) {
     },
 };
 
+fn readChar(allocator: std.mem.Allocator) !u16 {
+    if (builtin.os.tag == .windows) {
+        if (c._kbhit() == 0) {
+            return 0xffff;
+        }
+        var char = c._getch();
+
+        if (char == 0 or char == 0xe0) { // function or arrow key
+            const InputScancode = enum(u8) {
+                up = 0x48,
+                down = 0x50,
+                left = 0x4b,
+                right = 0x4d,
+                insert = 0x52,
+                delete = 0x53,
+                home = 0x47,
+                end = 0x4f,
+                _,
+            };
+            const scancode: InputScancode = @enumFromInt(c._getch());
+
+            return @intFromEnum(
+                @as(InputByte, switch (scancode) {
+                    .up => .up,
+                    .down => .down,
+                    .left => .left,
+                    .right => .right,
+                    .insert => .insert,
+                    .delete => .delete,
+                    .home => .home,
+                    .end => .end,
+                    _ => return 0xffff,
+                }),
+            );
+        } else if (char == '\r') {
+            char = '\n';
+        }
+
+        return @intCast(char);
+    } else {
+        var char: u16 = std.io.getStdIn().reader().readByte() catch 0xffff;
+
+        if (char == 0x1b) { // handle escape sequences
+            var sequence = std.ArrayList(u8).init(allocator);
+            defer sequence.deinit();
+
+            while (char != 0xffff) {
+                char = std.io.getStdIn().reader().readByte() catch 0xffff;
+                if (char <= 0xff) {
+                    try sequence.append(@intCast(char));
+                }
+            }
+
+            var input_byte: ?InputByte = null;
+
+            if (sequence.items.len > 1) {
+                if (std.mem.startsWith(u8, sequence.items, "[") or
+                    std.mem.startsWith(u8, sequence.items, "O"))
+                {
+                    input_byte = switch (sequence.items[1]) {
+                        'A' => InputByte.up,
+                        'B' => InputByte.down,
+                        'C' => InputByte.right,
+                        'D' => InputByte.left,
+                        else => null,
+                    };
+                }
+
+                if (std.mem.eql(u8, sequence.items, "[2~")) {
+                    input_byte = .insert;
+                } else if (std.mem.eql(u8, sequence.items, "[3~")) {
+                    input_byte = .delete;
+                } else if (std.mem.eql(u8, sequence.items, "[H")) {
+                    input_byte = .home;
+                } else if (std.mem.eql(u8, sequence.items, "[F")) {
+                    input_byte = .end;
+                }
+            }
+
+            if (input_byte) |byte| {
+                char = @intFromEnum(byte);
+            } else {
+                char = 0xffff;
+            }
+        }
+
+        if (char == 0x7f) { // have pressing backspace send backspace ascii
+            char = 0x08;
+        } else if (char == '\r') { // parity with windows
+            char = '\n';
+        }
+        return char;
+    }
+}
+
 fn mmio(
     address: u16,
     optional_value: ?u16, // null on reads
@@ -211,50 +327,104 @@ fn mmio(
     else
         undefined;
 
-    switch (@as(Mmio, @enumFromInt(address))) {
+    switch (@as(MemoryMap, @enumFromInt(address))) {
         .char_in => {
             if (optional_value == null) {
-                if (builtin.os.tag == .windows) {
-                    if (c._kbhit() == 0) {
-                        return 0xffff;
-                    }
-                    var char = c._getch();
-
-                    if (char == 0 or char == 0xe0) { // function or arrow key
-                        _ = c._getch();
-                        return 0xffff;
-                    } else if (char == '\r') {
-                        char = '\n';
-                    } else if (char == '\n') {
-                        char = '\r';
-                    }
-
-                    return @intCast(char);
-                } else {
-                    var char: u16 = std.io.getStdIn().reader().readByte() catch 0xffff;
-
-                    if (char == 0x1b) { // skip escape sequences
-                        while (char != 0xffff) {
-                            char = std.io.getStdIn().reader().readByte() catch 0xffff;
-                        }
-                    }
-
-                    if (char == 0x7f) { // have pressing backspace send backspace ascii
-                        char = 0x08;
-                    }
-
-                    return char;
-                }
+                return try readChar(state.allocator);
             }
         },
         .char_out => {
             if (optional_value) |value| {
-                try std.io.getStdOut().writer().writeByte(@truncate(value));
-            }
-        },
-        .halt => {
-            if (optional_value) |_| {
-                state.running = false;
+                const stdout = std.io.getStdOut().writer();
+
+                if (builtin.os.tag == .windows) {
+                    const Coord = extern struct {
+                        X: std.os.windows.SHORT,
+                        Y: std.os.windows.SHORT,
+                    };
+
+                    const stdin_handle = try std.os.windows.GetStdHandle(
+                        state.stdin_handle,
+                    );
+                    var screen_buffer_info: opaque {} = undefined;
+
+                    if (c.GetConsoleScreenBufferInfo(
+                        stdin_handle,
+                        &screen_buffer_info,
+                    ) == 0) {
+                        return error.CouldNotGetConsoleInfo;
+                    }
+
+                    const current_coord: Coord =
+                        screen_buffer_info.dwCursorPosition;
+
+                    switch (@as(OutputByte, @enumFromInt(value))) {
+                        .line_feed => {
+                            stdout.writeByte('\n');
+                            c.SetConsoleCursorPosition(
+                                stdin_handle,
+                                Coord{
+                                    .X = current_coord.X,
+                                    .Y = current_coord.Y + 1,
+                                },
+                            );
+                        },
+                        .carriage_return => {
+                            c.SetConsoleCursorPosition(
+                                stdin_handle,
+                                Coord{
+                                    .X = 0,
+                                    .Y = current_coord.Y,
+                                },
+                            );
+                        },
+                        .backspace => {
+                            c.SetConsoleCursorPosition(
+                                stdin_handle,
+                                Coord{
+                                    .X = current_coord.X -| 1,
+                                    .Y = current_coord.Y,
+                                },
+                            );
+                        },
+                        _ => {
+                            if (std.ascii.isPrint(@truncate(value))) {
+                                try std.io.getStdOut().writer().writeByte(
+                                    @truncate(value),
+                                );
+                            }
+                        },
+                    }
+                } else {
+                    switch (@as(OutputByte, @enumFromInt(value))) {
+                        .line_feed => {
+                            const stdin = std.io.getStdIn().reader();
+
+                            try stdout.writeAll("\x1b[6n"); // query cursor position;
+
+                            try stdin.skipBytes(2, .{ .buf_size = 2 }); // skip CSI
+
+                            var bytes_list = std.ArrayList(u8).init(state.allocator);
+                            defer bytes_list.deinit();
+
+                            try stdin.skipUntilDelimiterOrEof(';'); // skip row pos
+                            try stdin.streamUntilDelimiter(bytes_list.writer(), 'R', null); // get column pos
+
+                            try stdout.print("\n\x1b[{s}G", .{bytes_list.items}); // newline, set column to be the same
+                        },
+                        .carriage_return => {
+                            try stdout.writeAll("\x1b[G"); // cursor all the way left
+                        },
+                        .backspace => {
+                            try stdout.writeAll("\x1b[D"); // cursor left 1
+                        },
+                        _ => {
+                            if (std.ascii.isPrint(@truncate(value))) {
+                                try stdout.writeByte(@truncate(value));
+                            }
+                        },
+                    }
+                }
             }
         },
         .seek_lsw => {
@@ -346,6 +516,11 @@ fn mmio(
                     undefined;
             }
         },
+        .halt => {
+            if (optional_value) |_| {
+                state.running = false;
+            }
+        },
         _ => return null,
     }
 
@@ -429,13 +604,17 @@ fn getRValue(
 }
 
 fn flushStdin(state: MmioState) !void {
-    const stdin_handle = state.stdin_handle;
     if (builtin.os.tag == .windows) {
-        if (c.FlushConsoleInputBuffer(stdin_handle) == 0) {
+        const stdin_handle = try std.os.windows.GetStdHandle(state.stdin_handle);
+        if (FlushConsoleInputBuffer(stdin_handle) == 0) {
             return error.CouldNotFlushInput;
         }
     } else {
-        try std.posix.tcsetattr(@intCast(stdin_handle), .FLUSH, state.original_termios);
+        try std.posix.tcsetattr(
+            @intCast(state.stdin_handle),
+            .FLUSH,
+            state.original_termios,
+        );
     }
 }
 
@@ -451,7 +630,7 @@ fn interpret(
 
     var cmp_flag = false;
     const stdin_handle: i64 = comptime if (builtin.os.tag == .windows)
-        try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE)
+        std.os.windows.STD_INPUT_HANDLE
     else
         std.io.getStdIn().handle;
 
@@ -681,3 +860,9 @@ fn print(comptime format: []const u8, args: anytype) !void {
 
     try stderr.print(format, args);
 }
+
+// windows wrappers
+
+extern "kernel32" fn FlushConsoleInputBuffer(
+    hConsoleInput: std.os.windows.HANDLE,
+) callconv(.WINAPI) std.os.windows.BOOL;

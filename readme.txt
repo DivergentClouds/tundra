@@ -60,26 +60,26 @@ MMIO
 
 Memory Map
 ----------
-|---------|------------|-----------------------------------|
+|=========|============|===================================|
 | address | read/write | effect                            |
-|---------|------------|-----------------------------------|
+|=========|============|===================================|
 | 0xfff0  | read       | if input is available, then read  |
 |         |            | input into LSB, clearing MSB.     |
 |         |            | if input is not available, then   |
 |         |            | read -1                           |
 |---------|------------|-----------------------------------|
-| 0xfff1  | write      | writes LSB to output              |
+| 0xfff1  | write      | write LSB to the terminal         |
 |---------|------------|-----------------------------------|
-| 0xfff2  | read/write | stores the least significant word |
+| 0xfff2  | read/write | store the least significant word  |
 |         |            | of the 24-bit storage seek        |
 |         |            | address                           |
 |---------|------------|-----------------------------------|
-| 0xfff3  | read/write | stores LSB as the most            |
-|         |            | significant byte of the 24-bit    |
-|         |            | storage seek address. reads into  |
-|         |            | LSB and clears MSB                |
+| 0xfff3  | read/write | store LSB as the most significant |
+|         |            | byte of the 24-bit storage seek   |
+|         |            | address. reads into LSB, clearing |
+|         |            | MSB                               |
 |---------|------------|-----------------------------------|
-| 0xfff4  | read/write | stores the chunk size for storage |
+| 0xfff4  | read/write | store the chunk size for storage  |
 |         |            | access                            |
 |---------|------------|-----------------------------------|
 | 0xfff5  | write      | write a chunk from storage at the |
@@ -92,7 +92,7 @@ Memory Map
 |         |            | the seek address, increment seek  |
 |         |            | address by chunk size             |
 |---------|------------|-----------------------------------|
-| 0xfff7  | read       | reads the number of attached      |
+| 0xfff7  | read       | read the number of attached       |
 |         |            | storage devices                   |
 |---------|------------|-----------------------------------|
 | 0xfff8  | write      | set which storage device to       |
@@ -111,7 +111,45 @@ Notes
 - seek address and chunk size default to 0
 - only the 24-bit address range of storage may be written to
 - at most 4 storage devices may be attached
+- terminal i/o can use specific bytes to convey additional information
 
+Terminal Input
+--------------
+|===============================|======|
+| key                           | byte |
+|===============================|======|
+| enter                         | 0x0a |
+|-------------------------------|------|
+| backspace                     | 0x08 |
+|-------------------------------|------|
+| up arrow                      | 0xe9 |
+|-------------------------------|------|
+| down arrow                    | 0xea |
+|-------------------------------|------|
+| left arrow                    | 0xeb |
+|-------------------------------|------|
+| right arrow                   | 0xec |
+|-------------------------------|------|
+| insert                        | 0xee |
+|-------------------------------|------|
+| delete                        | 0xf8 |
+|-------------------------------|------|
+| home                          | 0xe8 |
+|-------------------------------|------|
+| end                           | 0xe5 |
+|-------------------------------|------|
+
+Terminal Output
+--------------
+|======|===============================|
+| byte | purpose                       |
+|======|===============================|
+| 0x0a | move cursor down 1 row        |
+|------|-------------------------------|
+| 0x0d | move cursor all the way left  |
+|------|-------------------------------|
+| 0x08 | move cursor left 1 column     |
+|------|-------------------------------|
 
 Emulator
 ========
@@ -211,8 +249,11 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; jump to src if dest1 and dest2 are not equal
   JNE dest1, dest2, src
 
-  ; jump to imm if dest1 and dest2 are not equal
-  JNEI, dest1, dest2, imm
+  ; jump to imm if dest and src are not equal
+  JNERI, dest, src, imm
+
+  ; jump to imm2 if dest and imm1 are not equal
+  JNEI, dest, imm1, imm2
 
   ; jump to src2 if dest and src1 are equal, assert dest and src1 are positive
   JEQP dest, src1, src2
@@ -295,25 +336,23 @@ in addition, tundra-extra.inc defines following constants:
 
   MMIO = 0xFFF0
 
-  MMIO.INPUT_AVAILABLE = 0xFFF0
+  MMIO.READ_CHAR = 0xFFF0
 
-  MMIO.READ_CHAR = 0xFFF1
+  MMIO.WRITE_CHAR = 0xFFF1
 
-  MMIO.WRITE_CHAR = 0xFFF2
+  MMIO.SEEK_LSW = 0xFFF2
 
-  MMIO.SEEK_LSW = 0xFFF3
+  MMIO.SEEK_MSB = 0xFFF3
 
-  MMIO.SEEK_MSB = 0xFFF4
+  MMIO.CHUNK_SIZE = 0xFFF4
 
-  MMIO.CHUNK_SIZE = 0xFFF5
+  MMIO.READ_CHUNK = 0xFFF5
 
-  MMIO.READ_CHUNK = 0xFFF6
+  MMIO.WRITE_CHUNK = 0xFFF6
 
-  MMIO.WRITE_CHUNK = 0xFFF7
+  MMIO.STORAGE_COUNT = 0xFFF7
 
-  MMIO.STORAGE_COUNT = 0xFFF8
-
-  MMIO.STORAGE_INDEX = 0xFFF9
+  MMIO.STORAGE_INDEX = 0xFFF8
 
   MMIO.HALT = 0xFFFF
 
