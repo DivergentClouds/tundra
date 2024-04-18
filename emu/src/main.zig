@@ -207,7 +207,6 @@ const MmioState = switch (builtin.os.tag) {
         storage_files: []std.fs.File,
         storage_index: u16,
         memory: []u8,
-        stdin_handle: i64,
     },
     else => struct {
         allocator: std.mem.Allocator,
@@ -217,7 +216,6 @@ const MmioState = switch (builtin.os.tag) {
         storage_files: []std.fs.File,
         storage_index: u16,
         memory: []u8,
-        stdin_handle: i64,
         original_termios: std.posix.termios = undefined,
     },
 };
@@ -338,54 +336,57 @@ fn mmio(
                 const stdout = std.io.getStdOut().writer();
 
                 if (builtin.os.tag == .windows) {
-                    const Coord = extern struct {
-                        X: std.os.windows.SHORT,
-                        Y: std.os.windows.SHORT,
-                    };
-
-                    const stdin_handle = try std.os.windows.GetStdHandle(
-                        state.stdin_handle,
-                    );
-                    var screen_buffer_info: opaque {} = undefined;
+                    const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
+                    var screen_buffer_info: c.CONSOLE_SCREEN_BUFFER_INFO = undefined;
 
                     if (c.GetConsoleScreenBufferInfo(
-                        stdin_handle,
+                        stdout_handle,
                         &screen_buffer_info,
                     ) == 0) {
+                        std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
                         return error.CouldNotGetConsoleInfo;
                     }
 
-                    const current_coord: Coord =
+                    const current_coord: c.COORD =
                         screen_buffer_info.dwCursorPosition;
 
                     switch (@as(OutputByte, @enumFromInt(value))) {
                         .line_feed => {
-                            stdout.writeByte('\n');
-                            c.SetConsoleCursorPosition(
-                                stdin_handle,
-                                Coord{
+                            try stdout.writeByte('\n');
+                            if (c.SetConsoleCursorPosition(
+                                stdout_handle,
+                                c.COORD{
                                     .X = current_coord.X,
                                     .Y = current_coord.Y + 1,
                                 },
-                            );
+                            ) == 0) {
+                                std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                                return error.CouldNotPrintLineFeed;
+                            }
                         },
                         .carriage_return => {
-                            c.SetConsoleCursorPosition(
-                                stdin_handle,
-                                Coord{
+                            if (c.SetConsoleCursorPosition(
+                                stdout_handle,
+                                c.COORD{
                                     .X = 0,
                                     .Y = current_coord.Y,
                                 },
-                            );
+                            ) == 0) {
+                                std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                                return error.CouldNotPrintCarriageReturn;
+                            }
                         },
                         .backspace => {
-                            c.SetConsoleCursorPosition(
-                                stdin_handle,
-                                Coord{
+                            if (c.SetConsoleCursorPosition(
+                                stdout_handle,
+                                c.COORD{
                                     .X = current_coord.X -| 1,
                                     .Y = current_coord.Y,
                                 },
-                            );
+                            ) == 0) {
+                                std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                                return error.CouldNotPrintBackspace;
+                            }
                         },
                         _ => {
                             if (std.ascii.isPrint(@truncate(value))) {
@@ -605,13 +606,13 @@ fn getRValue(
 
 fn flushStdin(state: MmioState) !void {
     if (builtin.os.tag == .windows) {
-        const stdin_handle = try std.os.windows.GetStdHandle(state.stdin_handle);
+        const stdin_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
         if (FlushConsoleInputBuffer(stdin_handle) == 0) {
             return error.CouldNotFlushInput;
         }
     } else {
         try std.posix.tcsetattr(
-            @intCast(state.stdin_handle),
+            std.io.getStdIn().handle,
             .FLUSH,
             state.original_termios,
         );
@@ -629,10 +630,6 @@ fn interpret(
     registers[pc] = 0;
 
     var cmp_flag = false;
-    const stdin_handle: i64 = comptime if (builtin.os.tag == .windows)
-        std.os.windows.STD_INPUT_HANDLE
-    else
-        std.io.getStdIn().handle;
 
     var state: MmioState = .{
         .allocator = allocator,
@@ -642,11 +639,10 @@ fn interpret(
         .storage_files = storage,
         .storage_index = 0,
         .memory = memory,
-        .stdin_handle = stdin_handle,
     };
 
     if (builtin.os.tag != .windows)
-        state.original_termios = try std.posix.tcgetattr(@intCast(state.stdin_handle));
+        state.original_termios = try std.posix.tcgetattr(std.io.getStdIn().handle);
 
     // attempt to flush any remaining stdin characters
     defer flushStdin(state) catch {};
@@ -865,4 +861,4 @@ fn print(comptime format: []const u8, args: anytype) !void {
 
 extern "kernel32" fn FlushConsoleInputBuffer(
     hConsoleInput: std.os.windows.HANDLE,
-) callconv(.WINAPI) std.os.windows.BOOL;
+) callconv(std.os.windows.WINAPI) std.os.windows.BOOL;
