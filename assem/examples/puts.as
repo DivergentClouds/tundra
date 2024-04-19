@@ -16,23 +16,23 @@ main:
 ; puts(str: [*:0]u8) void
 puts:
   .loop:
-  peeki b, 4
+    peeki b, 4
 
-  mov b, *b
-  andi b, 0xff
+    mov b, *b
+    andi b, 0xff
 
-  cmpi b, 0
-  jmpi .end
+    cmpi b, 0
+    jmpi .end
 
-  movi a, mmio.write_char
-  sto a, b
+    movi a, mmio.write_char
+    sto a, b
 
-  ; str is 4 bytes deep in the stack
-  movi a, 4
-  peek b, a
-  addi b, 1
-  poke a, b
-  jmpi .loop
+    ; str is 4 bytes deep in the stack
+    movi a, 4
+    peek b, a
+    addi b, 1
+    poke a, b
+    jmpi .loop
 
   .end:
   reti b, 2

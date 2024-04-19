@@ -12,8 +12,7 @@ loop:
   cmpi c, 0xffff
   jmpi loop ; loop until character is read
 
-sto b, c
-jnei c, lf, loop
-stoi b, CR
-jmpi loop
-
+  sto b, c
+  jnei c, lf, loop
+  stoi b, CR
+  jmpi loop
