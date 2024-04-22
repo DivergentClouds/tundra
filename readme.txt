@@ -185,7 +185,7 @@ an immediate. To use them, suffix an instruction name with 'I'. As an example:
 is equivalent to:
 
   MOV A, *PC
-  0xFFFF
+  dw 0xFFFF
 
 
 Tundra-Extra
