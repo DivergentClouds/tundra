@@ -290,10 +290,12 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; remove the top imm bytes of the stack
   DROPI imm
 
-  ; copy a value that is src items deep in the stack to dest
+  ; copy a value that is src bytes deep in the stack to dest
+  ; note that the top value on the stack is 2 bytes deep
   PEEK dest, src
 
-  ; copy a value that is imm items deep in the stack to dest
+  ; copy a value that is imm bytes deep in the stack to dest
+  ; note that the top value on the stack is 2 bytes deep
   PEEKI dest, imm
 
   ; push the next address to the stack and jump to src
