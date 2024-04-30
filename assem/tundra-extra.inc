@@ -235,7 +235,7 @@ end macro
 macro push? src
   internal_assert_not_reg src, *pc
 
-   sto sp, src
+  sto sp, src
   addi sp, -2
 end macro
 
@@ -281,20 +281,23 @@ macro peeki? dest, imm
 
 end macro
 
-; dest is offset into stack, src is value to poke
-macro poke? dest, src
-  internal_assert_not_reg src, *pc
+; src1 is offset into stack, src2 is value to poke
+macro poke? src1, src2
+  internal_assert_not_reg src1, *pc
+  internal_assert_not_reg src2, *pc
 
-  add sp, dest
-  sto sp, src
-  sub sp, dest
+  add sp, src1
+  sto sp, src2
+  sub sp, src1
 end macro
 
-; dest is offset into stack, imm is value to poke
-macro pokei? dest, imm
-  add sp, dest
+; src is offset into stack, imm is value to poke
+macro pokei? src, imm
+  internal_assert_not_reg src, *pc
+
+  add sp, src
   stoi sp, imm
-  sub sp, dest
+  sub sp, src
 end macro
 
 macro drop? src

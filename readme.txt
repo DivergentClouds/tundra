@@ -296,6 +296,12 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; copy a value that is imm bytes deep in the stack to dest
   PEEKI dest, imm
 
+  ; set a value that is src1 bytes deep in the stack to src2
+  POKE src1, src2
+
+  ; set a value that is src bytes deep in the stack to imm
+  POKEI src, imm
+
   ; push the next address to the stack and jump to src
   ; has no effect if CMP flag is set
   CALL src
