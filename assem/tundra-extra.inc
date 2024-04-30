@@ -271,9 +271,14 @@ end macro
 macro peeki? dest, imm
   internal_assert_not_reg dest, pc
 
-  mov dest, sp
-  addi dest, imm
-  mov dest, *dest
+  if imm = 0
+    mov dest, *sp
+  else
+    mov dest, sp
+    addi dest, imm
+    mov dest, *dest
+  end if
+
 end macro
 
 ; dest is offset into stack, src is value to poke
