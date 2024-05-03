@@ -60,15 +60,15 @@ macro ori? dest, imm
   not dest
 end macro
 
-macro shri? dest, imm
+macro shli? dest, imm
   internal_assert_not_reg dest, pc
   assert imm < 16
   assert imm >= 0
  
-  shfi dest, imm or 0b10000
+  shfi dest, imm or 10000b
 end macro
 
-macro shli? dest, imm
+macro shri? dest, imm
   internal_assert_not_reg dest, pc
   assert imm < 16
   assert imm >= 0
@@ -81,7 +81,7 @@ macro asri? dest, imm
   assert imm < 16
   assert imm >= 0
   
-  shfi dest, imm or 0b1000000
+  shfi dest, imm or 1000000b
 end macro
 
 macro rtli? dest, imm
@@ -89,7 +89,7 @@ macro rtli? dest, imm
   assert imm < 16
   assert imm >= 0
   
-  shfi dest, imm or 0b110000
+  shfi dest, imm or 110000b
 end macro
 
 macro rtri? dest, imm
@@ -97,7 +97,7 @@ macro rtri? dest, imm
   assert imm < 16
   assert imm >= 0
   
-  shfi dest, imm or 0b100000
+  shfi dest, imm or 100000b
 end macro
 
 macro neg? dest
