@@ -300,7 +300,13 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   POKE src1, src2
 
   ; set a value that is src bytes deep in the stack to imm
-  POKEI src, imm
+  POKERI src, imm
+
+  ; set a value that is imm bytes deep in the stack to src
+  POKEIR imm, src
+
+  ; set a value that is imm1 bytes deep in the stack to imm2
+  POKEI imm1, imm2
 
   ; push the next address to the stack and jump to src
   ; has no effect if CMP flag is set

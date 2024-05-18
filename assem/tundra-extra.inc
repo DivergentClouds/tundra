@@ -291,8 +291,29 @@ macro poke? src1, src2
   sub sp, src1
 end macro
 
+; poke, immediate, immediate
+; imm1 is offset into stack, imm2 is value to poke
+macro pokei? imm1, imm2
+  internal_assert_not_reg src, *pc
+
+  addi sp, imm1
+  stoi sp, imm2
+  subi sp, imm1
+end macro
+
+; poke, immediate, register
+; imm is offset into stack, src is value to poke
+macro pokeir? imm, src
+  internal_assert_not_reg src, *pc
+
+  addi sp, imm
+  sto sp, src
+  subi sp, imm
+end macro
+
+; poke, register, immediate
 ; src is offset into stack, imm is value to poke
-macro pokei? src, imm
+macro pokeri? src, imm
   internal_assert_not_reg src, *pc
 
   add sp, src
