@@ -240,14 +240,14 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; has no effect if CMP flag is set
   JMPI imm
 
-  ; jump to src if dest1 and dest2 are equal
-  JEQ dest1, dest2, src
+  ; jump to src2 if dest and src1 are equal
+  JEQ dest1, src1, src2
 
-  ; jump to imm if dest1 and dest2 are equal
-  JEQI dest1, dest2, imm
+  ; jump to imm if dest and src are equal
+  JEQI dest, src, imm
 
-  ; jump to src if dest1 and dest2 are not equal
-  JNE dest1, dest2, src
+  ; jump to src2 if dest and src1 are not equal
+  JNE dest, src1, src2
 
   ; jump to imm if dest and src are not equal
   JNERI, dest, src, imm
