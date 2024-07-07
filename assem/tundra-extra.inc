@@ -17,13 +17,16 @@ virtual at 0xfff0
   mmio?:
   .read_char? = 0xfff0
   .write_char? = 0xfff1
-  .seek_lsw? = 0xfff2
-  .seek_msb? = 0xfff3
-  .chunk_size? = 0xfff4
-  .read_chunk? = 0xfff5
-  .write_chunk? = 0xfff6
-  .storage_count? = 0xfff7
-  .storage_index? = 0xfff8
+  .access_address? = 0xfff2
+  .block_index? = 0xfff3
+  .write_storage? = 0xfff4
+  .read_storage? = 0xfff5
+  .storage_count? = 0xfff6
+  .storage_index? = 0xfff7
+  .zero_memory? = 0xfff8
+  .boundary_address? = 0xfff9
+  .interrupt_address? = 0xfffa
+  .previous_interrupt? = 0xfffb
   .halt? = 0xffff
 end virtual
 

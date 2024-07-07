@@ -1,5 +1,6 @@
 **/zig-out
 **/zig-cache
+**/.zig-cache
 test-progs
 assem/examples/assembled
 assem/wip

@@ -70,33 +70,42 @@ Memory Map
 |---------|------------|-----------------------------------|
 | 0xfff1  | write      | write LSB to the terminal         |
 |---------|------------|-----------------------------------|
-| 0xfff2  | read/write | store the least significant word  |
-|         |            | of the 24-bit storage seek        |
-|         |            | address                           |
+| 0xfff2  | read/write | holds the memory access address   |
 |---------|------------|-----------------------------------|
-| 0xfff3  | read/write | store LSB as the most significant |
-|         |            | byte of the 24-bit storage seek   |
-|         |            | address. reads into LSB, clearing |
-|         |            | MSB                               |
+| 0xfff3  | read/write | holds the storage block index     |
 |---------|------------|-----------------------------------|
-| 0xfff4  | read/write | store the chunk size for storage  |
-|         |            | access                            |
+| 0xfff4  | write      | write the given number of blocks  |
+|         |            | from memory starting at the       |
+|         |            | access address into storage       |
+|         |            | starting at the block index       |
 |---------|------------|-----------------------------------|
-| 0xfff5  | write      | write a chunk from storage at the |
-|         |            | seek address into memory at the   |
-|         |            | given address, increment seek     |
-|         |            | address by chunk size             |
+| 0xfff5  | write      | read the given number of blocks   |
+|         |            | from storage starting at the      |
+|         |            | block index into memory starting  |
+|         |            | at the access address             |
 |---------|------------|-----------------------------------|
-| 0xfff6  | write      | write a chunk from memory at the  |
-|         |            | the given address into storage at |
-|         |            | the seek address, increment seek  |
-|         |            | address by chunk size             |
-|---------|------------|-----------------------------------|
-| 0xfff7  | read       | read the number of attached       |
+| 0xfff6  | read       | read the number of attached       |
 |         |            | storage devices                   |
 |---------|------------|-----------------------------------|
-| 0xfff8  | write      | set which storage device to       |
-|         |            | access, 0-indexed.                |
+| 0xfff7  | write      | set which storage device to       |
+|         |            | access, 0-indexed                 |
+|---------|------------|-----------------------------------|
+| 0xfff8  | write      | set the given number of bytes     |
+|         |            | starting at the memory access     |
+|         |            | address to 0                      |
+|---------|------------|-----------------------------------|
+| 0xfff9  | read/write | holds the kernel boundary address |
+|---------|------------|-----------------------------------|
+| 0xfffa  | read/write | holds the kernel interrupt        |
+|         |            | address. if code executing above  |
+|         |            | the kernel boundary attempts to   |
+|         |            | access MMIO or memory addresses   |
+|         |            | less than or equal to the         |
+|         |            | boundary, a jump to this address  |
+|         |            | occurs                            |
+|---------|------------|-----------------------------------|
+| 0xfffb  | read       | holds the previous address an     |
+|         |            | interrupt happened from           |
 |---------|------------|-----------------------------------|
 | 0xffff  | write      | halt execution                    |
 |---------|------------|-----------------------------------|
@@ -108,9 +117,11 @@ Notes
 - attempting to read/write memory in and above the mmio range via storage access
   is a no-op
 - attempting to read undefined storage will read 0
-- seek address and chunk size default to 0
-- only the 24-bit address range of storage may be written to
+- block size is 1024 bytes
 - at most 4 storage devices may be attached
+- the kernel boundary address defaults to 0xffff
+- all other read/write mmio addresses default to 0
+- the previous interrupt address defaults to 0
 - terminal i/o can use specific bytes to convey additional information
 
 Terminal Input
@@ -352,19 +363,25 @@ in addition, tundra-extra.inc defines following constants:
 
   MMIO.WRITE_CHAR = 0xFFF1
 
-  MMIO.SEEK_LSW = 0xFFF2
+  MMIO.ACCESS_ADDRESS = 0xFFF2
 
-  MMIO.SEEK_MSB = 0xFFF3
+  MMIO.BLOCK_INDEX = 0xFFF3
 
-  MMIO.CHUNK_SIZE = 0xFFF4
+  MMIO.WRITE_STORAGE = 0xFFF4
 
-  MMIO.READ_CHUNK = 0xFFF5
+  MMIO.READ_STORAGE = 0xFFF5
 
-  MMIO.WRITE_CHUNK = 0xFFF6
+  MMIO.STORAGE_COUNT = 0xFFF6
 
-  MMIO.STORAGE_COUNT = 0xFFF7
+  MMIO.STORAGE_INDEX = 0xFFF7
 
-  MMIO.STORAGE_INDEX = 0xFFF8
+  MMIO.ZERO_MEMORY = 0xFFF8
+
+  MMIO.BOUNDARY_ADDRESS = 0xFFF9
+
+  MMIO.INTERRUPT_ADDRESS = 0xFFFA
+
+  MMIO.PREVIOUS_INTERRUPT = 0xFFFB
 
   MMIO.HALT = 0xFFFF
 

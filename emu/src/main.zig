@@ -14,6 +14,8 @@ const reserved_mmio_space = 0x10; // reserved space at the top of memory for mmi
 const max_memory = 0x1_0000 - reserved_mmio_space;
 const max_storage = 0xff_ffff;
 
+const block_size = 1024;
+
 pub fn main() !void {
     var allocator_type =
         comptime if (builtin.mode == .Debug)
@@ -127,27 +129,31 @@ pub fn main() !void {
 }
 
 const MemoryMap = enum(u16) {
-    /// read: reads LSB from input (stdin), clears MSB, blocks
+    /// read: reads LSB from input (stdin), clears MSB
     char_in = 0xfff0,
     /// write: writes LSB to output (stdout)
     char_out,
-    /// read/write: stores least significant word of the 24-bit seek address
-    seek_lsw,
-    /// read/write: stores most significant byte of the 24-bit seek address
-    seek_msb,
-    /// read/write: stores the chunk size for storage access
-    chunk_size,
-    /// write: writes a chunk from storage at the seek address to memory at the
-    /// given address
-    storage_in,
-    /// write: writes chunk from memory at the given address at the seek address
-    /// in storage
-    storage_out,
+    /// read/write: holds the memory access address
+    access_address,
+    /// read/write: holds the storage block index
+    block_index,
+    /// write: write to storage from memory
+    write_storage,
+    /// write: read from storage to memory
+    read_storage,
     /// read: reads the number of attached storage devices
     storage_count,
     /// write: set which storage device to access, 0-indexed
     storage_index,
-    /// halts the system
+    /// write: set a region of memory to zero
+    zero_mem,
+    /// read/write: holds the kernel boundary address
+    boundary_address,
+    /// read/write: holds the address to jump to on interrupt
+    interrupt_adderess,
+    /// read: holds the address the previous interrupt was triggered from
+    previous_interrupt,
+    /// write: halts the system
     halt = 0xffff,
     _,
 };
@@ -202,19 +208,25 @@ const MmioState = switch (builtin.os.tag) {
     .windows => struct {
         allocator: std.mem.Allocator,
         running: bool,
-        seek_address: u24,
-        chunk_size: u16,
+        access_address: u16,
+        block_index: u16,
         storage_files: []std.fs.File,
         storage_index: u16,
+        boundary_address: u16,
+        interrupt_address: u16,
+        previous_interrupt: u16,
         memory: []u8,
     },
     else => struct {
         allocator: std.mem.Allocator,
         running: bool,
-        seek_address: u24,
-        chunk_size: u16,
+        access_address: u16,
+        block_index: u16,
         storage_files: []std.fs.File,
         storage_index: u16,
+        boundary_address: u16,
+        interrupt_address: u16,
+        previous_interrupt: u16,
         memory: []u8,
         original_termios: std.posix.termios = undefined,
     },
@@ -320,10 +332,10 @@ fn mmio(
     optional_value: ?u16, // null on reads
     state: *MmioState,
 ) !?u16 {
-    const storage_file = if (state.storage_files.len > 0)
+    const optional_storage_file: ?std.fs.File = if (state.storage_index < state.storage_files.len)
         state.storage_files[state.storage_index]
     else
-        undefined;
+        null;
 
     switch (@as(MemoryMap, @enumFromInt(address))) {
         .char_in => {
@@ -333,173 +345,73 @@ fn mmio(
         },
         .char_out => {
             if (optional_value) |value| {
-                const stdout = std.io.getStdOut().writer();
-
-                if (builtin.os.tag == .windows) {
-                    const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
-                    var screen_buffer_info: c.CONSOLE_SCREEN_BUFFER_INFO = undefined;
-
-                    if (c.GetConsoleScreenBufferInfo(
-                        stdout_handle,
-                        &screen_buffer_info,
-                    ) == 0) {
-                        std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-                        return error.CouldNotGetConsoleInfo;
-                    }
-
-                    const current_coord: c.COORD =
-                        screen_buffer_info.dwCursorPosition;
-
-                    switch (@as(OutputByte, @enumFromInt(value))) {
-                        .line_feed => {
-                            try stdout.writeByte('\n');
-                            if (c.SetConsoleCursorPosition(
-                                stdout_handle,
-                                c.COORD{
-                                    .X = current_coord.X,
-                                    .Y = current_coord.Y + 1,
-                                },
-                            ) == 0) {
-                                std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-                                return error.CouldNotPrintLineFeed;
-                            }
-                        },
-                        .carriage_return => {
-                            if (c.SetConsoleCursorPosition(
-                                stdout_handle,
-                                c.COORD{
-                                    .X = 0,
-                                    .Y = current_coord.Y,
-                                },
-                            ) == 0) {
-                                std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-                                return error.CouldNotPrintCarriageReturn;
-                            }
-                        },
-                        .backspace => {
-                            if (c.SetConsoleCursorPosition(
-                                stdout_handle,
-                                c.COORD{
-                                    .X = current_coord.X -| 1,
-                                    .Y = current_coord.Y,
-                                },
-                            ) == 0) {
-                                std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-                                return error.CouldNotPrintBackspace;
-                            }
-                        },
-                        _ => {
-                            if (std.ascii.isPrint(@truncate(value))) {
-                                try std.io.getStdOut().writer().writeByte(
-                                    @truncate(value),
-                                );
-                            }
-                        },
-                    }
-                } else {
-                    switch (@as(OutputByte, @enumFromInt(value))) {
-                        .line_feed => {
-                            const stdin = std.io.getStdIn().reader();
-
-                            try stdout.writeAll("\x1b[6n"); // query cursor position;
-
-                            try stdin.skipBytes(2, .{ .buf_size = 2 }); // skip CSI
-
-                            var bytes_list = std.ArrayList(u8).init(state.allocator);
-                            defer bytes_list.deinit();
-
-                            try stdin.skipUntilDelimiterOrEof(';'); // skip row pos
-                            try stdin.streamUntilDelimiter(bytes_list.writer(), 'R', null); // get column pos
-
-                            try stdout.print("\n\x1b[{s}G", .{bytes_list.items}); // newline, set column to be the same
-                        },
-                        .carriage_return => {
-                            try stdout.writeAll("\x1b[G"); // cursor all the way left
-                        },
-                        .backspace => {
-                            try stdout.writeAll("\x1b[D"); // cursor left 1
-                        },
-                        _ => {
-                            if (std.ascii.isPrint(@truncate(value))) {
-                                try stdout.writeByte(@truncate(value));
-                            }
-                        },
-                    }
-                }
+                try writeChar(
+                    @truncate(value),
+                    state.allocator,
+                );
             }
         },
-        .seek_lsw => {
+        .access_address => {
             if (optional_value) |value| {
-                state.seek_address = (state.seek_address & 0xff0000) | value;
+                state.access_address = value;
             } else {
-                return @truncate(state.seek_address);
+                return state.access_address;
             }
         },
-        .seek_msb => {
+        .block_index => {
             if (optional_value) |value| {
-                state.seek_address =
-                    (state.seek_address & 0xffff) | @as(u24, value) << 16;
+                state.block_index = value;
             } else {
-                return @truncate(state.seek_address >> 16);
+                return state.block_index;
             }
         },
-        .chunk_size => {
+        .read_storage => {
             if (optional_value) |value| {
-                state.chunk_size = value;
-            } else {
-                return state.chunk_size;
-            }
-        },
-        .storage_in => {
-            if (optional_value) |value| {
-                if (state.storage_files.len > 0) {
-                    try storage_file.seekTo(state.seek_address);
+                const read_size = @as(usize, value) * block_size;
+                const storage_address = @as(usize, state.block_index) * block_size;
+
+                if (optional_storage_file) |storage_file| {
+                    try storage_file.seekTo(storage_address);
                     const amount_read = try storage_file.reader().readAll(
-                        state.memory[value..@min(
+                        state.memory[state.access_address..@min(
                             state.memory.len,
-                            state.chunk_size +| value,
+                            state.access_address +| read_size,
                         )],
                     );
 
-                    if (amount_read < state.chunk_size) {
+                    if (amount_read < read_size) {
                         @memset(
-                            state.memory[amount_read + value .. @min(
+                            state.memory[amount_read + state.access_address .. @min(
                                 state.memory.len,
-                                state.chunk_size +| value,
+                                state.access_address +| read_size,
                             )],
                             0,
                         );
                     }
                 } else {
                     @memset(
-                        state.memory[value..@min(
+                        state.memory[state.access_address..@min(
                             state.memory.len,
-                            state.chunk_size +| value,
+                            state.access_address +| read_size,
                         )],
                         0,
                     );
                 }
-                state.seek_address +%= state.chunk_size;
             }
         },
-        .storage_out => {
+        .write_storage => {
             if (optional_value) |value| {
-                if (state.storage_files.len > 0) {
-                    // make sure not to write beyond max storage size
-                    const actual_chunk_size: u16 =
-                        if (@as(u32, state.seek_address) + state.chunk_size > max_storage)
-                        @truncate(max_storage - state.seek_address)
-                    else
-                        state.chunk_size;
+                const write_size = @as(usize, value) * block_size;
+                const storage_address = @as(usize, state.block_index) * block_size;
 
-                    try storage_file.seekTo(state.seek_address);
+                if (optional_storage_file) |storage_file| {
+                    try storage_file.seekTo(storage_address);
                     try storage_file.writer().writeAll(
-                        state.memory[value..@min(
+                        state.memory[state.access_address..@min(
                             state.memory.len,
-                            actual_chunk_size +| value,
+                            state.access_address + write_size,
                         )],
                     );
-                    state.seek_address +%= state.chunk_size;
                 }
             }
         },
@@ -510,11 +422,37 @@ fn mmio(
         },
         .storage_index => {
             if (optional_value) |value| {
-                state.storage_index =
-                    if (value <= 4)
-                    value
-                else
-                    undefined;
+                state.storage_index = value;
+            }
+        },
+        .zero_mem => {
+            if (optional_value) |value| {
+                @memset(
+                    state.memory[state.access_address..@min(
+                        state.memory.len,
+                        state.access_address + value,
+                    )],
+                    0,
+                );
+            }
+        },
+        .boundary_address => {
+            if (optional_value) |value| {
+                state.boundary_address = value;
+            } else {
+                return state.boundary_address;
+            }
+        },
+        .interrupt_adderess => {
+            if (optional_value) |value| {
+                state.interrupt_address = value;
+            } else {
+                return state.interrupt_address;
+            }
+        },
+        .previous_interrupt => {
+            if (optional_value == null) {
+                return state.previous_interrupt;
             }
         },
         .halt => {
@@ -528,11 +466,128 @@ fn mmio(
     return null;
 }
 
+fn writeChar(char: u8, allocator: std.mem.Allocator) !void {
+    const stdout = std.io.getStdOut().writer();
+
+    if (builtin.os.tag == .windows) {
+        const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
+        var screen_buffer_info: c.CONSOLE_SCREEN_BUFFER_INFO = undefined;
+
+        if (c.GetConsoleScreenBufferInfo(
+            stdout_handle,
+            &screen_buffer_info,
+        ) == 0) {
+            std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+            return error.CouldNotGetConsoleInfo;
+        }
+
+        const current_coord: c.COORD =
+            screen_buffer_info.dwCursorPosition;
+
+        switch (@as(OutputByte, @enumFromInt(char))) {
+            .line_feed => {
+                try stdout.writeByte('\n');
+                if (c.SetConsoleCursorPosition(
+                    stdout_handle,
+                    c.COORD{
+                        .X = current_coord.X,
+                        .Y = current_coord.Y + 1,
+                    },
+                ) == 0) {
+                    std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                    return error.CouldNotPrintLineFeed;
+                }
+            },
+            .carriage_return => {
+                if (c.SetConsoleCursorPosition(
+                    stdout_handle,
+                    c.COORD{
+                        .X = 0,
+                        .Y = current_coord.Y,
+                    },
+                ) == 0) {
+                    std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                    return error.CouldNotPrintCarriageReturn;
+                }
+            },
+            .backspace => {
+                if (c.SetConsoleCursorPosition(
+                    stdout_handle,
+                    c.COORD{
+                        .X = current_coord.X -| 1,
+                        .Y = current_coord.Y,
+                    },
+                ) == 0) {
+                    std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                    return error.CouldNotPrintBackspace;
+                }
+            },
+            _ => {
+                if (std.ascii.isPrint(char)) {
+                    try std.io.getStdOut().writer().writeByte(
+                        char,
+                    );
+                }
+            },
+        }
+    } else {
+        switch (@as(OutputByte, @enumFromInt(char))) {
+            .line_feed => {
+                const stdin = std.io.getStdIn().reader();
+
+                try stdout.writeAll("\x1b[6n"); // query cursor position;
+
+                try stdin.skipBytes(2, .{ .buf_size = 2 }); // skip CSI
+
+                var bytes_list = std.ArrayList(u8).init(allocator);
+                defer bytes_list.deinit();
+
+                try stdin.skipUntilDelimiterOrEof(';'); // skip row pos
+                try stdin.streamUntilDelimiter(bytes_list.writer(), 'R', null); // get column pos
+
+                try stdout.print("\n\x1b[{s}G", .{bytes_list.items}); // newline, set column to be the same
+            },
+            .carriage_return => {
+                try stdout.writeAll("\x1b[G"); // cursor all the way left
+            },
+            .backspace => {
+                try stdout.writeAll("\x1b[D"); // cursor left 1
+            },
+            _ => {
+                if (std.ascii.isPrint(char)) {
+                    try stdout.writeByte(char);
+                }
+            },
+        }
+    }
+}
+
+fn checkBoundary(
+    current_pc: u16,
+    attempted_address: u16,
+    registers: *[4]u16,
+    state: *MmioState,
+) bool {
+    if (current_pc > state.boundary_address) {
+        if (attempted_address <= state.boundary_address or
+            attempted_address > max_memory)
+        {
+            state.previous_interrupt = current_pc;
+
+            // don't apply normal jump restrictions
+            registers[@intFromEnum(Register.pc)] = state.interrupt_address;
+            return true;
+        }
+    }
+    return false;
+}
+
 fn setRegister(
     id: Register,
     value: u16,
     cmp_flag: *bool, // result of op_cmp, true if pc is not writable
     registers: *[4]u16,
+    state: *MmioState,
 ) void {
     if (id == .pc) {
         if (cmp_flag.*) {
@@ -540,7 +595,17 @@ fn setRegister(
             return;
         }
         // stop crash when moving to mmio space
-        registers[@intFromEnum(id)] = @min(value, max_memory - 1);
+        // why would i want that?
+        // registers[@intFromEnum(id)] = @min(value, max_memory - 1);
+
+        if (checkBoundary(
+            getRegister(.pc, registers.*),
+            value,
+            registers,
+            state,
+        )) {
+            return;
+        }
     }
     registers[@intFromEnum(id)] = value;
 }
@@ -576,11 +641,19 @@ fn getRValue(
     memory: []u8,
     registers: *[4]u16,
     state: *MmioState,
-) !u16 {
-    const pc = @intFromEnum(Register.pc); // for register access
+) !?u16 {
     var r_value = getRegister(reg_r, registers.*);
 
     if (deref_r) {
+        if (checkBoundary(
+            getRegister(.pc, registers.*),
+            r_value,
+            registers,
+            state,
+        )) {
+            return null;
+        }
+
         if (r_value < max_memory - 1) {
             r_value = memory[r_value] +
                 (@as(u16, memory[r_value + 1]) << 8);
@@ -597,7 +670,7 @@ fn getRValue(
             }
         }
         if (reg_r == .pc) {
-            registers[pc] += 2;
+            registers[@intFromEnum(Register.pc)] +|= 2;
         }
     }
 
@@ -634,10 +707,13 @@ fn interpret(
     var state: MmioState = .{
         .allocator = allocator,
         .running = true,
-        .seek_address = 0,
-        .chunk_size = 0,
+        .access_address = 0,
+        .block_index = 0,
         .storage_files = storage,
         .storage_index = 0,
+        .boundary_address = 0xffff,
+        .interrupt_address = 0,
+        .previous_interrupt = 0,
         .memory = memory,
     };
 
@@ -660,7 +736,7 @@ fn interpret(
     while (state.running) {
         const instruction = parseInstruction(memory[registers[pc]]);
 
-        registers[pc] +%= 1;
+        registers[pc] +|= 1;
         // entered non-executable mmio area
         if (registers[pc] >= max_memory) {
             return error.EnteredMMIOSpace;
@@ -670,7 +746,7 @@ fn interpret(
             try print("{x:0>4}: ", .{registers[pc] -% 1});
         }
 
-        const r_value =
+        const optional_r_value =
             try getRValue(
             instruction.reg_r,
             instruction.deref_r,
@@ -691,17 +767,27 @@ fn interpret(
                 else
                     registers[@intFromEnum(instruction.reg_r)],
             });
-            if (instruction.deref_r) try print(
-                "                     [{x:0>4}{s}]\n",
-                .{
-                    r_value,
-                    if (registers[@intFromEnum(instruction.reg_r)] >= max_memory - 1)
-                        " (mmio)"
-                    else
-                        "",
-                },
-            );
+            if (instruction.deref_r) {
+                if (optional_r_value != null) {
+                    try print(
+                        "                     [{x:0>4}{s}]\n",
+                        .{
+                            optional_r_value.?,
+                            if (registers[@intFromEnum(instruction.reg_r)] >= max_memory - 1)
+                                " (mmio)"
+                            else
+                                "",
+                        },
+                    );
+                }
+            }
         }
+
+        if (optional_r_value == null) {
+            continue;
+        }
+
+        const r_value = optional_r_value.?;
 
         switch (instruction.opcode) {
             .op_mov => {
@@ -710,6 +796,7 @@ fn interpret(
                     r_value,
                     &cmp_flag,
                     &registers,
+                    &state,
                 );
             },
             .op_add => {
@@ -725,6 +812,7 @@ fn interpret(
                     value,
                     &cmp_flag,
                     &registers,
+                    &state,
                 );
             },
             .op_sto => {
@@ -732,6 +820,18 @@ fn interpret(
                     instruction.reg_w,
                     registers,
                 );
+
+                if (checkBoundary(
+                    getRegister(
+                        Register.pc,
+                        registers,
+                    ),
+                    w_value,
+                    &registers,
+                    &state,
+                )) {
+                    continue;
+                }
 
                 if (w_value < max_memory) {
                     memory[w_value] = @truncate(r_value);
@@ -787,6 +887,7 @@ fn interpret(
                     w_value,
                     &cmp_flag,
                     &registers,
+                    &state,
                 );
             },
             .op_and => {
@@ -802,6 +903,7 @@ fn interpret(
                     value,
                     &cmp_flag,
                     &registers,
+                    &state,
                 );
             },
             .op_nor => {
@@ -817,6 +919,7 @@ fn interpret(
                     value,
                     &cmp_flag,
                     &registers,
+                    &state,
                 );
             },
             .op_xor => {
@@ -832,6 +935,7 @@ fn interpret(
                     value,
                     &cmp_flag,
                     &registers,
+                    &state,
                 );
             },
         }
