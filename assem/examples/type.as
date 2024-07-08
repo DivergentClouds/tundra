@@ -1,4 +1,4 @@
-include 'tundra-extra.inc'
+include '../tundra-extra.inc'
 
 CR? = 13
 LF? = 10

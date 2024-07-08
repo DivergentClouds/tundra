@@ -1,5 +1,8 @@
 include '../tundra-extra.inc'
 
+CR? = 13
+LF? = 10
+
 _start:
   stack_init
   calli main
@@ -39,4 +42,4 @@ puts:
 
 data:
 .hello:
-  db 'Hello, world!', 10, 0
+  db 'Hello, world!', LF, CR, 0
