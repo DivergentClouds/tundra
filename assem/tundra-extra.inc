@@ -137,6 +137,11 @@ macro jmpi? imm
    movi pc, imm
 end macro
 
+; clear cmp flag, making jumps until the next `cmp` unconditional
+macro clear_flag
+  jmp pc ; clears cmp flag, pc is incremented post-fetch, pre-execution
+end macro
+
 ; jump if equal
 macro jeq? dest, src1, src2
   internal_assert_not_reg dest, pc
@@ -226,6 +231,94 @@ macro jeqpi? dest, imm1, imm2
   xori dest, imm1
   cmpi dest, 0
   jmpi imm2
+end macro
+
+; jump to src2 if dest <= src1 (unsigned)
+macro jlequ? dest, src1, src2
+  internal_assert_not_reg src1, *pc
+  internal_assert_not_reg src2, *pc
+  internal_assert_not_reg dest, pc
+
+  local skip1, skip2, skip3
+
+  ; NOTE: `a <=u b` should be `a <=s b and (a >=s 0 or b <s 0)`
+
+  ; a <=s b?
+  cmp dest, src1
+  jmpi skip1
+  jmpi skip3
+
+  ; a >=s 0?
+  skip1:
+  cmpi dest, -1
+  jmpi skip2
+  jmp src2
+
+  ; b <s 0?
+  skip2:
+  mov dest, src1
+  cmpi dest, -1
+  jmp src2
+
+  skip3:
+end macro
+
+; jump to imm if dest <= src (unsigned)
+macro jlequri? dest, src, imm
+  internal_assert_not_reg src, *pc
+  internal_assert_not_reg dest, pc
+
+  local skip1, skip2, skip3
+
+  ; NOTE: `a <=u b` should be `a <=s b and (a >=s 0 or b <s 0)`
+
+  ; a <=s b?
+  cmp dest, src
+  jmpi skip1
+  jmpi skip3
+
+  ; a >=s 0?
+  skip1:
+  cmpi dest, -1
+  jmpi skip2
+  jmpi imm
+
+  ; b <s 0?
+  skip2:
+  mov dest, src
+  cmpi dest, -1
+  jmpi imm
+
+  skip3:
+end macro
+
+; jump to imm2 if dest <= imm1 (unsigned)
+macro jlequi? dest, imm1, imm2
+  internal_assert_not_reg dest, pc
+
+  local skip1, skip2, skip3
+
+  ; NOTE: `a <=u b` should be `a <=s b and (a >=s 0 or b <s 0)`
+
+  ; a <=s b?
+  cmpi dest, imm1
+  jmpi skip1
+  jmpi skip3
+
+  ; a >=s 0?
+  skip1:
+  cmpi dest, -1
+
+  if imm1 < 0 | imm1 >= 0x7fff
+    ; b <s 0?
+    jmpi imm2
+  else
+    clear_flag
+  end if
+
+  jmpi imm2
+
+  skip3:
 end macro
 
 ; must be called before other stack macros
