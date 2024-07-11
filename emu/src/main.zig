@@ -568,10 +568,8 @@ fn checkBoundary(
     registers: *[4]u16,
     state: *MmioState,
 ) bool {
-    if (current_pc > state.boundary_address) {
-        if (attempted_address <= state.boundary_address or
-            attempted_address > max_memory)
-        {
+    if (current_pc < state.boundary_address) {
+        if (attempted_address >= state.boundary_address) {
             state.previous_interrupt = current_pc;
 
             // don't apply normal jump restrictions
@@ -711,7 +709,7 @@ fn interpret(
         .block_index = 0,
         .storage_files = storage,
         .storage_index = 0,
-        .boundary_address = 0xffff,
+        .boundary_address = 0,
         .interrupt_address = 0,
         .previous_interrupt = 0,
         .memory = memory,

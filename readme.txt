@@ -97,12 +97,11 @@ Memory Map
 | 0xfff9  | read/write | holds the kernel boundary address |
 |---------|------------|-----------------------------------|
 | 0xfffa  | read/write | holds the kernel interrupt        |
-|         |            | address. if code executing above  |
+|         |            | address. if code executing below  |
 |         |            | the kernel boundary attempts to   |
-|         |            | access MMIO or memory addresses   |
-|         |            | less than or equal to the         |
-|         |            | boundary, a jump to this address  |
-|         |            | occurs                            |
+|         |            | access memory addresses greater   |
+|         |            | than or equal to the boundary,    |
+|         |            | a jump to this address occurs     |
 |---------|------------|-----------------------------------|
 | 0xfffb  | read       | holds the previous address an     |
 |         |            | interrupt happened from           |
@@ -119,8 +118,7 @@ Notes
 - attempting to read undefined storage will read 0
 - block size is 1024 bytes
 - at most 4 storage devices may be attached
-- the kernel boundary address defaults to 0xffff
-- all other read/write mmio addresses default to 0
+- all read/write mmio addresses default to 0
 - the previous interrupt address defaults to 0
 - terminal i/o can use specific bytes to convey additional information
 
