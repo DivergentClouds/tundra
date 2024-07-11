@@ -346,12 +346,12 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; pop a word into dest before dropping src bytes from the stack followed by
   ; jumping to dest
   ; has no effect if CMP flag is set
-  RET src
+  RET dest, src
 
   ; pop a word into dest before dropping imm bytes from the stack followed by
   ; jumping to dest
   ; has no effect if CMP flag is set
-  RETI imm
+  RETI dest, imm
 
 in addition, tundra-extra.inc defines following constants:
 
