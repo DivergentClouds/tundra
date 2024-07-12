@@ -2,13 +2,12 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const c =
-    if (builtin.os.tag == .windows)
     @cImport({
+    if (builtin.os.tag == .windows) {
         @cInclude("windows.h");
         @cInclude("conio.h");
-    })
-else
-    undefined;
+    }
+});
 
 const reserved_mmio_space = 0x10; // reserved space at the top of memory for mmio
 const max_memory = 0x1_0000 - reserved_mmio_space;
