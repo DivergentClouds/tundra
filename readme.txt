@@ -282,6 +282,15 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; jump to imm2 if dest <= imm1 (unsigned)
   JLEQUI dest, imm1, imm2
 
+  ; jump to src2 if dest > src1 (unsigned)
+  JGTU dest, src1, src2
+
+  ; jump to imm if dest > src (unsigned)
+  JGTURI dest, src, imm
+
+  ; jump to imm2 if dest > imm1 (unsigned)
+  JGTUI dest, imm1, imm2
+
   ; set C to STACK_BASE
   ; this macro must be called before the first time a macro that uses the stack
   ; is called

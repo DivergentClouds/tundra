@@ -312,12 +312,94 @@ macro jlequi? dest, imm1, imm2
   ; b <s 0?
   if imm1 < 0 | imm1 >= 0x7fff
     clear_flag
-    jmpi imm2
-  else
-    jmpi imm2
   end if
 
+  jmpi imm2
+
   skip3:
+end macro
+
+; jump to src2 if dest > src1 (unsigned)
+macro jgtu? dest, src1, src2
+  internal_assert_not_reg src1, *pc
+  internal_assert_not_reg src2, *pc
+  internal_assert_not_reg dest, pc
+
+  local skip1, skip2, skip3
+
+  ; NOTE: `a >u b` should be `a >s b or (a <s 0 and b >=s 0)`
+
+  ; a >s b?
+  cmp dest, src1
+  jmpi skip1
+  jmp src2
+
+  ; a <s 0?
+  skip1:
+  cmpi dest, -1
+  jmpi skip2
+  jmpi skip3
+
+  ; b >=s 0?
+  skip2:
+  mov dest, src1
+  cmpi dest, -1
+  jmpi skip3
+  jmp src2
+
+  skip3:
+end macro
+
+; jump to imm if dest > src (unsigned)
+macro jgturi? dest, src, imm
+  internal_assert_not_reg src, *pc
+  internal_assert_not_reg dest, pc
+
+  local skip1, skip2, skip3
+
+  ; NOTE: `a >u b` should be `a >s b or (a <s 0 and b >=s 0)`
+
+  ; a >s b?
+  cmp dest, src
+  jmpi skip1
+  jmpi imm
+
+  ; a <s 0?
+  skip1:
+  cmpi dest, -1
+  jmpi skip2
+  jmpi skip3
+
+  ; b >=s 0?
+  skip2:
+  mov dest, src
+  cmpi dest, -1
+  jmpi skip3
+  jmpi imm
+
+  skip3:
+end macro
+
+; jump to imm2 if dest > imm1 (unsigned)
+macro jgtui? dest, imm1, imm2
+  internal_assert_not_reg dest, pc
+
+  local skip1
+
+  ; NOTE: `a >u b` should be `a >s b or (a <s 0 and b >=s 0)`
+
+  ; a >s b?
+  cmpi dest, imm1
+  jmpi skip1
+  jmpi imm2
+
+  ; b >=s 0?
+  skip1:
+  if imm1 >= 0
+    ; a <s 0?
+    cmpi dest, -1
+    jmpi imm2
+  end if
 end macro
 
 ; must be called before other stack macros
