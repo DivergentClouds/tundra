@@ -309,14 +309,13 @@ macro jlequi? dest, imm1, imm2
   skip1:
   cmpi dest, -1
 
+  ; b <s 0?
   if imm1 < 0 | imm1 >= 0x7fff
-    ; b <s 0?
+    clear_flag
     jmpi imm2
   else
-    clear_flag
+    jmpi imm2
   end if
-
-  jmpi imm2
 
   skip3:
 end macro
