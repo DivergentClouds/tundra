@@ -273,6 +273,15 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   ; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are positive
   JEQPI dest, imm1, imm2
 
+  ; jump to src2 if dest <= src1 (unsigned)
+  JLEQU dest, src1, src2
+
+  ; jump to imm if dest <= src (unsigned)
+  JLEQURI dest, src, imm
+
+  ; jump to imm2 if dest <= imm1 (unsigned)
+  JLEQUI dest, imm1, imm2
+
   ; set C to STACK_BASE
   ; this macro must be called before the first time a macro that uses the stack
   ; is called
