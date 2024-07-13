@@ -467,6 +467,7 @@ fn mmio(
 
 fn writeChar(char: u8, allocator: std.mem.Allocator) !void {
     const stdout = std.io.getStdOut().writer();
+    const stderr = std.io.getStdErr().writer();
 
     if (builtin.os.tag == .windows) {
         const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
@@ -476,7 +477,7 @@ fn writeChar(char: u8, allocator: std.mem.Allocator) !void {
             stdout_handle,
             &screen_buffer_info,
         ) == 0) {
-            std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
             return error.CouldNotGetConsoleInfo;
         }
 
@@ -487,56 +488,42 @@ fn writeChar(char: u8, allocator: std.mem.Allocator) !void {
             .line_feed => {
                 try stdout.writeByte('\n');
 
-                if (c.GetConsoleScreenBufferInfo(
-                    stdout_handle,
-                    &screen_buffer_info,
-                ) == 0) {
-                    std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                if (c.GetConsoleScreenBufferInfo(stdout_handle, &screen_buffer_info) == 0) {
+                    stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
                     return error.CouldNotGetConsoleInfo;
                 }
 
                 const new_coord: c.COORD = screen_buffer_info.dwCursorPosition;
 
-                if (c.SetConsoleCursorPosition(
-                    stdout_handle,
-                    c.COORD{
-                        .X = current_coord.X,
-                        .Y = new_coord.Y,
-                    },
-                ) == 0) {
-                    std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                if (c.SetConsoleCursorPosition(stdout_handle, c.COORD{
+                    .X = current_coord.X,
+                    .Y = new_coord.Y,
+                }) == 0) {
+                    stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
                     return error.CouldNotPrintLineFeed;
                 }
             },
             .carriage_return => {
-                if (c.SetConsoleCursorPosition(
-                    stdout_handle,
-                    c.COORD{
-                        .X = 0,
-                        .Y = current_coord.Y,
-                    },
-                ) == 0) {
-                    std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                if (c.SetConsoleCursorPosition(stdout_handle, c.COORD{
+                    .X = 0,
+                    .Y = current_coord.Y,
+                }) == 0) {
+                    stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
                     return error.CouldNotPrintCarriageReturn;
                 }
             },
             .backspace => {
-                if (c.SetConsoleCursorPosition(
-                    stdout_handle,
-                    c.COORD{
-                        .X = @max(current_coord.X -| 1, 0),
-                        .Y = current_coord.Y,
-                    },
-                ) == 0) {
-                    std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                if (c.SetConsoleCursorPosition(stdout_handle, c.COORD{
+                    .X = @max(current_coord.X -| 1, 0),
+                    .Y = current_coord.Y,
+                }) == 0) {
+                    stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
                     return error.CouldNotPrintBackspace;
                 }
             },
             _ => {
                 if (std.ascii.isPrint(char)) {
-                    try std.io.getStdOut().writer().writeByte(
-                        char,
-                    );
+                    try stdout.writeByte(char);
                 }
             },
         }
