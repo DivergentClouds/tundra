@@ -109,7 +109,6 @@ Memory Map
 | 0xffff  | write      | halt execution                    |
 |---------|------------|-----------------------------------|
 
-
 Notes
 -----
 - addresses 0xfff0 and above are reserved for mmio and may not be executed
