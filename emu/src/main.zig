@@ -486,11 +486,22 @@ fn writeChar(char: u8, allocator: std.mem.Allocator) !void {
         switch (@as(OutputByte, @enumFromInt(char))) {
             .line_feed => {
                 try stdout.writeByte('\n');
+
+                if (c.GetConsoleScreenBufferInfo(
+                    stdout_handle,
+                    &screen_buffer_info,
+                ) == 0) {
+                    std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+                    return error.CouldNotGetConsoleInfo;
+                }
+
+                const new_coord: c.COORD = screen_buffer_info.dwCursorPosition;
+
                 if (c.SetConsoleCursorPosition(
                     stdout_handle,
                     c.COORD{
                         .X = current_coord.X,
-                        .Y = current_coord.Y + 1,
+                        .Y = new_coord.Y,
                     },
                 ) == 0) {
                     std.io.getStdErr().writer().print("Error code: {d}\n", .{c.GetLastError()}) catch {};
@@ -513,7 +524,7 @@ fn writeChar(char: u8, allocator: std.mem.Allocator) !void {
                 if (c.SetConsoleCursorPosition(
                     stdout_handle,
                     c.COORD{
-                        .X = current_coord.X -| 1,
+                        .X = @max(current_coord.X -| 1, 0),
                         .Y = current_coord.Y,
                     },
                 ) == 0) {
