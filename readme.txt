@@ -22,14 +22,12 @@ B  = 01
 C  = 10
 PC = 11
 
-
 Dereferenced registers
 ----------------------
 *A  = 100
 *B  = 101
 *C  = 110
 *PC = 111
-
 
 Instructions
 ------------
@@ -47,13 +45,13 @@ AND = 101 WW DRR // set W to R&W
 NOR = 110 WW DRR // set W to ~(R|W)
 XOR = 111 WW DRR // set W to R^W
 
-
 Notes
 -----
 - data is 16-bit little endian
 - dereferencing R will load memory[R] and memory[R + 1]
 - PC is incremented by 1 after an instruction is fetched
 - dereferencing PC will increment it by 2 after fetch but before execution
+
 
 MMIO
 ====
@@ -182,7 +180,6 @@ include either 'tundra-core.inc' or 'tundra-extra.inc' (which includes
 tundra-core) at the top of your file. assembly is not case-sensitive.
 semicolons start line comments
 
-
 Tundra-Core
 -----------
 tundra-core.inc includes the instruction set along with macros that treat R as
@@ -194,7 +191,6 @@ is equivalent to:
 
   MOV A, *PC
   dw 0xFFFF
-
 
 Tundra-Extra
 ------------
