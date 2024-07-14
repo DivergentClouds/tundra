@@ -162,8 +162,8 @@ const MemoryMap = enum(u16) {
 
 const InputByte = enum(u8) {
     up = 'i' + 0x80,
-    down = 'j' + 0x80,
-    left = 'k' + 0x80,
+    down = 'k' + 0x80,
+    left = 'j' + 0x80,
     right = 'l' + 0x80,
     insert = 'n' + 0x80,
     delete = 'x' + 0x80,
