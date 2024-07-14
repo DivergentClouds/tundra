@@ -215,6 +215,8 @@ const MmioState = switch (builtin.os.tag) {
         interrupt_address: u16,
         previous_interrupt: u16,
         memory: []u8,
+        original_inmode: std.os.windows.DWORD = 0,
+        original_outmode: std.os.windows.DWORD = 0,
     },
     else => struct {
         allocator: std.mem.Allocator,
@@ -233,97 +235,67 @@ const MmioState = switch (builtin.os.tag) {
 
 fn readChar(allocator: std.mem.Allocator) !u16 {
     if (builtin.os.tag == .windows) {
-        if (c._kbhit() == 0) {
-            return 0xffff;
-        }
-        var char = c._getch();
-
-        if (char == 0 or char == 0xe0) { // function or arrow key
-            const InputScancode = enum(u8) {
-                up = 0x48,
-                down = 0x50,
-                left = 0x4b,
-                right = 0x4d,
-                insert = 0x52,
-                delete = 0x53,
-                home = 0x47,
-                end = 0x4f,
-                _,
-            };
-            const scancode: InputScancode = @enumFromInt(c._getch());
-
-            return @intFromEnum(
-                @as(InputByte, switch (scancode) {
-                    .up => .up,
-                    .down => .down,
-                    .left => .left,
-                    .right => .right,
-                    .insert => .insert,
-                    .delete => .delete,
-                    .home => .home,
-                    .end => .end,
-                    _ => return 0xffff,
-                }),
-            );
-        } else if (char == '\r') {
-            char = '\n';
-        }
-
-        return @intCast(char);
-    } else {
-        var char: u16 = std.io.getStdIn().reader().readByte() catch 0xffff;
-
-        if (char == 0x1b) { // handle escape sequences
-            var sequence = std.ArrayList(u8).init(allocator);
-            defer sequence.deinit();
-
-            while (char != 0xffff) {
-                char = std.io.getStdIn().reader().readByte() catch 0xffff;
-                if (char <= 0xff) {
-                    try sequence.append(@intCast(char));
-                }
-            }
-
-            var input_byte: ?InputByte = null;
-
-            if (sequence.items.len > 1) {
-                if (std.mem.startsWith(u8, sequence.items, "[") or
-                    std.mem.startsWith(u8, sequence.items, "O"))
-                {
-                    input_byte = switch (sequence.items[1]) {
-                        'A' => InputByte.up,
-                        'B' => InputByte.down,
-                        'C' => InputByte.right,
-                        'D' => InputByte.left,
-                        else => null,
-                    };
-                }
-
-                if (std.mem.eql(u8, sequence.items, "[2~")) {
-                    input_byte = .insert;
-                } else if (std.mem.eql(u8, sequence.items, "[3~")) {
-                    input_byte = .delete;
-                } else if (std.mem.eql(u8, sequence.items, "[H")) {
-                    input_byte = .home;
-                } else if (std.mem.eql(u8, sequence.items, "[F")) {
-                    input_byte = .end;
-                }
-            }
-
-            if (input_byte) |byte| {
-                char = @intFromEnum(byte);
-            } else {
-                char = 0xffff;
-            }
-        }
-
-        if (char == 0x7f) { // have pressing backspace send backspace ascii
-            char = 0x08;
-        } else if (char == '\r') { // parity with windows
-            char = '\n';
-        }
-        return char;
+        if (c._kbhit() == 0) return 0xffff;
     }
+    var char: u16 = std.io.getStdIn().reader().readByte() catch 0xffff;
+
+    if (char == 0x1b) { // handle escape sequences
+        var sequence = std.ArrayList(u8).init(allocator);
+        defer sequence.deinit();
+
+        while (char != 0xffff) {
+            if (builtin.os.tag == .windows) {
+                if (c._kbhit() == 0) {
+                    char = 0xffff;
+                    break;
+                }
+            }
+
+            char = std.io.getStdIn().reader().readByte() catch 0xffff;
+            if (char <= 0xff) {
+                try sequence.append(@intCast(char));
+            }
+        }
+
+        var input_byte: ?InputByte = null;
+
+        if (sequence.items.len > 1) {
+            if (std.mem.startsWith(u8, sequence.items, "[") or
+                std.mem.startsWith(u8, sequence.items, "O"))
+            {
+                input_byte = switch (sequence.items[1]) {
+                    'A' => InputByte.up,
+                    'B' => InputByte.down,
+                    'C' => InputByte.right,
+                    'D' => InputByte.left,
+                    else => null,
+                };
+            }
+
+            if (std.mem.eql(u8, sequence.items, "[2~")) {
+                input_byte = .insert;
+            } else if (std.mem.eql(u8, sequence.items, "[3~")) {
+                input_byte = .delete;
+            } else if (std.mem.eql(u8, sequence.items, "[H")) {
+                input_byte = .home;
+            } else if (std.mem.eql(u8, sequence.items, "[F")) {
+                input_byte = .end;
+            }
+        }
+
+        if (input_byte) |byte| {
+            char = @intFromEnum(byte);
+        } else {
+            char = 0xffff;
+        }
+    }
+
+    if (char == 0x7f) { // have pressing backspace send backspace ascii
+        char = 0x08;
+    } else if (char == '\r') { // parity with windows
+        char = '\n';
+    }
+    return char;
 }
 
 fn mmio(
@@ -467,95 +439,34 @@ fn mmio(
 
 fn writeChar(char: u8, allocator: std.mem.Allocator) !void {
     const stdout = std.io.getStdOut().writer();
-    const stderr = std.io.getStdErr().writer();
 
-    if (builtin.os.tag == .windows) {
-        const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
-        var screen_buffer_info: c.CONSOLE_SCREEN_BUFFER_INFO = undefined;
+    switch (@as(OutputByte, @enumFromInt(char))) {
+        .line_feed => {
+            const stdin = std.io.getStdIn().reader();
 
-        if (c.GetConsoleScreenBufferInfo(
-            stdout_handle,
-            &screen_buffer_info,
-        ) == 0) {
-            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-            return error.CouldNotGetConsoleInfo;
-        }
+            try stdout.writeAll("\x1b[6n"); // query cursor position;
 
-        const current_coord: c.COORD =
-            screen_buffer_info.dwCursorPosition;
+            try stdin.skipBytes(2, .{ .buf_size = 2 }); // skip CSI
 
-        switch (@as(OutputByte, @enumFromInt(char))) {
-            .line_feed => {
-                try stdout.writeByte('\n');
+            var bytes_list = std.ArrayList(u8).init(allocator);
+            defer bytes_list.deinit();
 
-                if (c.GetConsoleScreenBufferInfo(stdout_handle, &screen_buffer_info) == 0) {
-                    stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-                    return error.CouldNotGetConsoleInfo;
-                }
+            try stdin.skipUntilDelimiterOrEof(';'); // skip row pos
+            try stdin.streamUntilDelimiter(bytes_list.writer(), 'R', null); // get column pos
 
-                const new_coord: c.COORD = screen_buffer_info.dwCursorPosition;
-
-                if (c.SetConsoleCursorPosition(stdout_handle, c.COORD{
-                    .X = current_coord.X,
-                    .Y = new_coord.Y,
-                }) == 0) {
-                    stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-                    return error.CouldNotPrintLineFeed;
-                }
-            },
-            .carriage_return => {
-                if (c.SetConsoleCursorPosition(stdout_handle, c.COORD{
-                    .X = 0,
-                    .Y = current_coord.Y,
-                }) == 0) {
-                    stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-                    return error.CouldNotPrintCarriageReturn;
-                }
-            },
-            .backspace => {
-                if (c.SetConsoleCursorPosition(stdout_handle, c.COORD{
-                    .X = @max(current_coord.X -| 1, 0),
-                    .Y = current_coord.Y,
-                }) == 0) {
-                    stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-                    return error.CouldNotPrintBackspace;
-                }
-            },
-            _ => {
-                if (std.ascii.isPrint(char)) {
-                    try stdout.writeByte(char);
-                }
-            },
-        }
-    } else {
-        switch (@as(OutputByte, @enumFromInt(char))) {
-            .line_feed => {
-                const stdin = std.io.getStdIn().reader();
-
-                try stdout.writeAll("\x1b[6n"); // query cursor position;
-
-                try stdin.skipBytes(2, .{ .buf_size = 2 }); // skip CSI
-
-                var bytes_list = std.ArrayList(u8).init(allocator);
-                defer bytes_list.deinit();
-
-                try stdin.skipUntilDelimiterOrEof(';'); // skip row pos
-                try stdin.streamUntilDelimiter(bytes_list.writer(), 'R', null); // get column pos
-
-                try stdout.print("\n\x1b[{s}G", .{bytes_list.items}); // newline, set column to be the same
-            },
-            .carriage_return => {
-                try stdout.writeAll("\x1b[G"); // cursor all the way left
-            },
-            .backspace => {
-                try stdout.writeAll("\x1b[D"); // cursor left 1
-            },
-            _ => {
-                if (std.ascii.isPrint(char)) {
-                    try stdout.writeByte(char);
-                }
-            },
-        }
+            try stdout.print("\n\x1b[{s}G", .{bytes_list.items}); // newline, set column to be the same
+        },
+        .carriage_return => {
+            try stdout.writeAll("\x1b[G"); // cursor all the way left
+        },
+        .backspace => {
+            try stdout.writeAll("\x1b[D"); // cursor left 1
+        },
+        _ => {
+            if (std.ascii.isPrint(char)) {
+                try stdout.writeByte(char);
+            }
+        },
     }
 }
 
@@ -672,11 +583,27 @@ fn getRValue(
     return r_value;
 }
 
-fn flushStdin(state: MmioState) !void {
+fn cleanupIO(state: MmioState) !void {
     if (builtin.os.tag == .windows) {
+        const stderr = std.io.getStdErr().writer();
+
         const stdin_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
-        if (FlushConsoleInputBuffer(stdin_handle) == 0) {
+
+        if (c.SetConsoleMode(stdin_handle, state.original_inmode) == 0) {
+            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+            return error.CouldNotRestoreConsoleInputMode;
+        }
+
+        if (c.FlushConsoleInputBuffer(stdin_handle) == 0) {
+            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
             return error.CouldNotFlushInput;
+        }
+
+        const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
+
+        if (c.SetConsoleMode(stdout_handle, state.original_outmode) == 0) {
+            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+            return error.CouldNotRestoreConsoleOutputMode;
         }
     } else {
         try std.posix.tcsetattr(
@@ -693,6 +620,8 @@ fn interpret(
     storage: []std.fs.File,
     debugger: bool,
 ) !void {
+    const stderr = std.io.getStdErr().writer();
+
     const pc = @intFromEnum(Register.pc); // for register access
     var registers: [4]u16 = .{undefined} ** 4;
     registers[pc] = 0;
@@ -712,11 +641,45 @@ fn interpret(
         .memory = memory,
     };
 
-    if (builtin.os.tag != .windows)
+    if (builtin.os.tag != .windows) {
         state.original_termios = try std.posix.tcgetattr(std.io.getStdIn().handle);
+    } else {
+        const stdin_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
 
-    // attempt to flush any remaining stdin characters
-    defer flushStdin(state) catch {};
+        if (c.GetConsoleMode(stdin_handle, &state.original_inmode) == 0) {
+            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+            return error.CouldNotGetConsoleInputMode;
+        }
+
+        if (c.SetConsoleMode(
+            stdin_handle,
+            state.original_inmode &
+                ~@as(std.os.windows.DWORD, c.ENABLE_LINE_INPUT) &
+                ~@as(std.os.windows.DWORD, c.ENABLE_ECHO_INPUT) |
+                c.ENABLE_VIRTUAL_TERMINAL_INPUT,
+        ) == 0) {
+            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+            return error.CouldNotSetConsoleInputMode;
+        }
+
+        const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
+
+        if (c.GetConsoleMode(stdout_handle, &state.original_outmode) == 0) {
+            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+            return error.CouldNotGetConsoleOutputMode;
+        }
+
+        if (c.SetConsoleMode(stdout_handle, state.original_outmode |
+            c.ENABLE_VIRTUAL_TERMINAL_PROCESSING |
+            c.ENABLE_PROCESSED_OUTPUT) == 0)
+        {
+            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+            return error.CouldNotEnableVirtualTerminal;
+        }
+    }
+
+    // TODO: find a way for this to run on ctrl-c on windows
+    defer cleanupIO(state) catch {};
 
     if (builtin.os.tag != .windows) {
         var raw = state.original_termios;
@@ -738,7 +701,7 @@ fn interpret(
         }
 
         if (debugger) {
-            try print("{x:0>4}: ", .{registers[pc] -% 1});
+            try stderr.print("{x:0>4}: ", .{registers[pc] -% 1});
         }
 
         const optional_r_value =
@@ -751,7 +714,7 @@ fn interpret(
         );
 
         if (debugger) {
-            try print("{s} {s: >2} ({x:0>4}), {s}{s: <2} ({x:0>4})\n", .{
+            try stderr.print("{s} {s: >2} ({x:0>4}), {s}{s: <2} ({x:0>4})\n", .{
                 @tagName(instruction.opcode)[3..],
                 @tagName(instruction.reg_w),
                 registers[@intFromEnum(instruction.reg_w)],
@@ -764,7 +727,7 @@ fn interpret(
             });
             if (instruction.deref_r) {
                 if (optional_r_value != null) {
-                    try print(
+                    try stderr.print(
                         "                     [{x:0>4}{s}]\n",
                         .{
                             optional_r_value.?,
@@ -949,15 +912,3 @@ fn printUsage(
         \\
     , .{ args0, err_msg });
 }
-
-fn print(comptime format: []const u8, args: anytype) !void {
-    const stderr = std.io.getStdErr().writer();
-
-    try stderr.print(format, args);
-}
-
-// windows wrappers
-
-extern "kernel32" fn FlushConsoleInputBuffer(
-    hConsoleInput: std.os.windows.HANDLE,
-) callconv(std.os.windows.WINAPI) std.os.windows.BOOL;
