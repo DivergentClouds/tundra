@@ -15,6 +15,9 @@ const max_storage = 0xff_ffff;
 
 const block_size = 1024;
 
+// this needs to be global to run hook on ctrl-c
+var state: MmioState = undefined;
+
 pub fn main() !void {
     var allocator_type =
         comptime if (builtin.mode == .Debug)
@@ -301,7 +304,6 @@ fn readChar(allocator: std.mem.Allocator) !u16 {
 fn mmio(
     address: u16,
     optional_value: ?u16, // null on reads
-    state: *MmioState,
 ) !?u16 {
     const optional_storage_file: ?std.fs.File = if (state.storage_index < state.storage_files.len)
         state.storage_files[state.storage_index]
@@ -474,7 +476,6 @@ fn checkBoundary(
     current_pc: u16,
     attempted_address: u16,
     registers: *[4]u16,
-    state: *MmioState,
 ) bool {
     if (current_pc < state.boundary_address) {
         if (attempted_address >= state.boundary_address) {
@@ -493,7 +494,6 @@ fn setRegister(
     value: u16,
     cmp_flag: *bool, // result of op_cmp, true if pc is not writable
     registers: *[4]u16,
-    state: *MmioState,
 ) void {
     if (id == .pc) {
         if (cmp_flag.*) {
@@ -508,7 +508,6 @@ fn setRegister(
             getRegister(.pc, registers.*),
             value,
             registers,
-            state,
         )) {
             return;
         }
@@ -546,7 +545,6 @@ fn getRValue(
     deref_r: bool,
     memory: []u8,
     registers: *[4]u16,
-    state: *MmioState,
 ) !?u16 {
     var r_value = getRegister(reg_r, registers.*);
 
@@ -555,7 +553,6 @@ fn getRValue(
             getRegister(.pc, registers.*),
             r_value,
             registers,
-            state,
         )) {
             return null;
         }
@@ -567,7 +564,6 @@ fn getRValue(
             const mmio_optional = try mmio(
                 r_value,
                 null,
-                state,
             );
             if (mmio_optional) |mmio_value| {
                 r_value = mmio_value;
@@ -583,28 +579,9 @@ fn getRValue(
     return r_value;
 }
 
-fn cleanupIO(state: MmioState) !void {
+fn cleanupIO() !void {
     if (builtin.os.tag == .windows) {
-        const stderr = std.io.getStdErr().writer();
-
-        const stdin_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
-
-        if (c.SetConsoleMode(stdin_handle, state.original_inmode) == 0) {
-            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-            return error.CouldNotRestoreConsoleInputMode;
-        }
-
-        if (c.FlushConsoleInputBuffer(stdin_handle) == 0) {
-            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-            return error.CouldNotFlushInput;
-        }
-
-        const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
-
-        if (c.SetConsoleMode(stdout_handle, state.original_outmode) == 0) {
-            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
-            return error.CouldNotRestoreConsoleOutputMode;
-        }
+        _ = cleanupIOWindows(0xffff);
     } else {
         try std.posix.tcsetattr(
             std.io.getStdIn().handle,
@@ -612,6 +589,35 @@ fn cleanupIO(state: MmioState) !void {
             state.original_termios,
         );
     }
+}
+
+fn cleanupIOWindows(
+    ctrl_type: std.os.windows.DWORD,
+) callconv(std.os.windows.WINAPI) std.os.windows.BOOL {
+    const stderr = std.io.getStdErr().writer();
+
+    const stdin_handle = std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE) catch
+        return std.os.windows.FALSE;
+
+    if (c.SetConsoleMode(stdin_handle, state.original_inmode) == 0) {
+        stderr.print("Error: CouldNotRestoreConsoleInputMode, code: {d}\n", .{c.GetLastError()}) catch {};
+    }
+
+    if (c.FlushConsoleInputBuffer(stdin_handle) == 0) {
+        stderr.print("Error: CouldNotFlushInput, code: {d}\n", .{c.GetLastError()}) catch {};
+    }
+
+    const stdout_handle = std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE) catch
+        return std.os.windows.FALSE;
+
+    if (c.SetConsoleMode(stdout_handle, state.original_outmode) == 0) {
+        stderr.print("Error: CouldNotRestoreConsoleOutputMode, code: {d}\n", .{c.GetLastError()}) catch {};
+    }
+
+    if (ctrl_type == 0xffff) // 0xffff ==
+        return std.os.windows.TRUE
+    else
+        c.ExitProcess(@intCast(ctrl_type + 1));
 }
 
 fn interpret(
@@ -628,7 +634,7 @@ fn interpret(
 
     var cmp_flag = false;
 
-    var state: MmioState = .{
+    state = .{
         .allocator = allocator,
         .running = true,
         .access_address = 0,
@@ -678,8 +684,7 @@ fn interpret(
         }
     }
 
-    // TODO: find a way for this to run on ctrl-c on windows
-    defer cleanupIO(state) catch {};
+    defer cleanupIO() catch {};
 
     if (builtin.os.tag != .windows) {
         var raw = state.original_termios;
@@ -689,6 +694,11 @@ fn interpret(
         raw.cc[@intFromEnum(std.posix.V.TIME)] = 1;
         raw.cc[@intFromEnum(std.posix.V.MIN)] = 0;
         try std.posix.tcsetattr(@intCast(std.io.getStdIn().handle), .FLUSH, raw);
+    } else {
+        if (c.SetConsoleCtrlHandler(&cleanupIOWindows, c.TRUE) == 0) {
+            stderr.print("Error code: {d}\n", .{c.GetLastError()}) catch {};
+            return error.CouldNotSetConsoleCtrlHandler;
+        }
     }
 
     while (state.running) {
@@ -710,7 +720,6 @@ fn interpret(
             instruction.deref_r,
             memory,
             &registers,
-            &state,
         );
 
         if (debugger) {
@@ -754,7 +763,6 @@ fn interpret(
                     r_value,
                     &cmp_flag,
                     &registers,
-                    &state,
                 );
             },
             .op_add => {
@@ -770,7 +778,6 @@ fn interpret(
                     value,
                     &cmp_flag,
                     &registers,
-                    &state,
                 );
             },
             .op_sto => {
@@ -786,7 +793,6 @@ fn interpret(
                     ),
                     w_value,
                     &registers,
-                    &state,
                 )) {
                     continue;
                 }
@@ -798,7 +804,6 @@ fn interpret(
                     _ = try mmio(
                         w_value,
                         r_value,
-                        &state,
                     );
                 }
             },
@@ -845,7 +850,6 @@ fn interpret(
                     w_value,
                     &cmp_flag,
                     &registers,
-                    &state,
                 );
             },
             .op_and => {
@@ -861,7 +865,6 @@ fn interpret(
                     value,
                     &cmp_flag,
                     &registers,
-                    &state,
                 );
             },
             .op_nor => {
@@ -877,7 +880,6 @@ fn interpret(
                     value,
                     &cmp_flag,
                     &registers,
-                    &state,
                 );
             },
             .op_xor => {
@@ -893,7 +895,6 @@ fn interpret(
                     value,
                     &cmp_flag,
                     &registers,
-                    &state,
                 );
             },
         }
