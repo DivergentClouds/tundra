@@ -172,12 +172,17 @@ const InputByte = enum(u8) {
 };
 
 const OutputByte = enum(u8) {
-    line_feed = 0x0a, // equivalent to down
+    backspace = 0x08, // equivalent to cursor_left + space + cursor_left
+    line_feed = 0x0a, // cursor_down + scroll
     carriage_return = 0x0d, // set cursor to an x position of 0
-    backspace = 0x08, // equivalent to left
-    //    clear_screen = 'X' + 0x80, // clear the screen
-    //    clear_remaining_line = 'C' + 0x80, // clear the line starting after the cursor
-    //    reset_cursor = 'R' + 0x80, // set cursor to 0, 0
+    clear_right = 'R' + 0x80, // clear to the right of the cursor
+    clear_below = 'B' + 0x80, // clear all lines below the cursor
+    clear_all = 'X' + 0x80, // clear the whole screen
+    reset_cursor = 'H' + 0x80, // set cursor to 0, 0
+    cursor_up = 'i' + 0x80, // does not scroll
+    cursor_down = 'k' + 0x80, // does not scroll
+    cursor_left = 'j' + 0x80, // does not scroll
+    cursor_right = 'l' + 0x80, // does not scroll
     _,
 };
 
@@ -257,6 +262,11 @@ fn readChar(allocator: std.mem.Allocator) !u16 {
             char = std.io.getStdIn().reader().readByte() catch 0xffff;
             if (char <= 0xff) {
                 try sequence.append(@intCast(char));
+
+                switch (char) {
+                    'A'...'D', '~', 'H', 'F' => break,
+                    else => {},
+                }
             }
         }
 
@@ -462,7 +472,31 @@ fn writeChar(char: u8, allocator: std.mem.Allocator) !void {
             try stdout.writeAll("\x1b[G"); // cursor all the way left
         },
         .backspace => {
-            try stdout.writeAll("\x1b[D"); // cursor left 1
+            try stdout.writeAll("\x1b[D \x1b[D"); // cursor left 1
+        },
+        .clear_right => {
+            try stdout.writeAll("\x1b[K"); // cursor all the way left
+        },
+        .clear_below => {
+            try stdout.writeAll("\x1b[J"); // cursor all the way left
+        },
+        .clear_all => {
+            try stdout.writeAll("\x1b[2J"); // cursor all the way left
+        },
+        .reset_cursor => {
+            try stdout.writeAll("\x1b[;H"); // cursor all the way left
+        },
+        .cursor_up => {
+            try stdout.writeAll("\x1b[A"); // cursor all the way left
+        },
+        .cursor_down => {
+            try stdout.writeAll("\x1b[B"); // cursor all the way left
+        },
+        .cursor_left => {
+            try stdout.writeAll("\x1b[D"); // cursor all the way left
+        },
+        .cursor_right => {
+            try stdout.writeAll("\x1b[C"); // cursor all the way left
         },
         _ => {
             if (std.ascii.isPrint(char)) {

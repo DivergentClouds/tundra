@@ -147,15 +147,35 @@ Terminal Input
 
 Terminal Output
 --------------
-|======|===============================|
-| byte | purpose                       |
-|======|===============================|
-| 0x0a | move cursor down 1 row        |
-|------|-------------------------------|
-| 0x0d | move cursor all the way left  |
-|------|-------------------------------|
-| 0x08 | move cursor left 1 column     |
-|------|-------------------------------|
+|======|===================================================|
+| byte | purpose                                           |
+|======|===================================================|
+| 0x0a | move cursor down by 1 row, scrolling if needed    |
+|------|---------------------------------------------------|
+| 0x0d | move cursor all the way left                      |
+|------|---------------------------------------------------|
+| 0x08 | move the cursor left 1 column, deleting the       |
+|      | character there                                   |
+|------|---------------------------------------------------|
+| 0xd2 | delete the part of the line to the right of the   |
+|      | cursor                                            |
+|------|---------------------------------------------------|
+| 0xc2 | delete all lines below the cursor                 |
+|------|---------------------------------------------------|
+| 0xd8 | clear the screen                                  |
+|------|---------------------------------------------------|
+| 0xc8 | move the cursor to the top-left corner of the     |
+|      | screen                                            |
+|------|---------------------------------------------------|
+| 0xe9 | move the cursor up 1 row, does not scroll         |
+|------|---------------------------------------------------|
+| 0xeb | move the cursor down 1 row, does not scroll       |
+|------|---------------------------------------------------|
+| 0xea | move the cursor left 1 row, does not scroll       |
+|------|---------------------------------------------------|
+| 0xec | move the cursor right 1 row, does not scroll      |
+|------|---------------------------------------------------|
+
 
 Emulator
 ========
