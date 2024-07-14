@@ -48,6 +48,14 @@ macro not? dest
   nor dest, dest
 end macro
 
+macro movb? dest, src
+  internal_assert_not_reg dest, pc
+  internal_assert_not_reg src, *pc
+
+  mov dest, src
+  andi dest, 0xff
+end macro
+
 macro or? dest, src
   internal_assert_not_reg src, *pc
   internal_assert_not_reg dest, pc

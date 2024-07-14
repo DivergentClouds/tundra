@@ -21,8 +21,7 @@ puts:
   .loop:
     peeki b, 4
 
-    mov b, *b
-    andi b, 0xff
+    movb b, *b
 
     cmpi b, 0
     jmpi .end
