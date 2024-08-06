@@ -10,8 +10,8 @@ const c =
 });
 
 const reserved_mmio_space = 0x10; // reserved space at the top of memory for mmio
-const max_memory = 0x1_0000 - reserved_mmio_space;
-const max_storage = 0xff_ffff;
+const max_address = 0xffff - reserved_mmio_space;
+const max_memory = max_address + 2; // need 1 extra byte for accessing max_address, memory is 0-indexed
 
 const block_size = 1024;
 
@@ -534,9 +534,6 @@ fn setRegister(
             cmp_flag.* = false;
             return;
         }
-        // stop crash when moving to mmio space
-        // why would i want that?
-        // registers[@intFromEnum(id)] = @min(value, max_memory - 1);
 
         if (checkBoundary(
             getRegister(.pc, registers.*),
@@ -585,13 +582,14 @@ fn getRValue(
     if (deref_r) {
         if (checkBoundary(
             getRegister(.pc, registers.*),
-            r_value,
+            r_value +| 1, // check upper byte of word
             registers,
         )) {
             return null;
         }
 
-        if (r_value < max_memory - 1) {
+        // TODO: figure out new behaviour for when the upper byte is in mmio space but bottom is not
+        if (r_value <= max_address) {
             r_value = memory[r_value] +
                 (@as(u16, memory[r_value + 1]) << 8);
         } else {
@@ -739,9 +737,14 @@ fn interpret(
         const instruction = parseInstruction(memory[registers[pc]]);
 
         registers[pc] +|= 1;
+
         // entered non-executable mmio area
-        if (registers[pc] >= max_memory) {
+        if (registers[pc] > max_address) {
             return error.EnteredMMIOSpace;
+        }
+
+        if (checkBoundary(registers[pc] - 1, registers[pc], &registers)) {
+            continue;
         }
 
         if (debugger) {
@@ -774,7 +777,7 @@ fn interpret(
                         "                     [{x:0>4}{s}]\n",
                         .{
                             optional_r_value.?,
-                            if (registers[@intFromEnum(instruction.reg_r)] >= max_memory - 1)
+                            if (registers[@intFromEnum(instruction.reg_r)] > max_address)
                                 " (mmio)"
                             else
                                 "",
@@ -825,13 +828,13 @@ fn interpret(
                         Register.pc,
                         registers,
                     ),
-                    w_value,
+                    w_value +| 1, // check upper byte of word
                     &registers,
                 )) {
                     continue;
                 }
 
-                if (w_value < max_memory) {
+                if (w_value <= max_address) {
                     memory[w_value] = @truncate(r_value);
                     memory[w_value + 1] = @truncate(r_value >> 8);
                 } else {

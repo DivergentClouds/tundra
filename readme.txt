@@ -110,6 +110,8 @@ Memory Map
 Notes
 -----
 - addresses 0xfff0 and above are reserved for mmio and may not be executed
+- reading/writing to address 0xffef will access a byte that is not otherwise
+  addressable as the upper byte
 - attempting to read/write memory in and above the mmio range via storage access
   is a no-op
 - attempting to read undefined storage will read 0
