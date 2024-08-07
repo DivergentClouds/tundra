@@ -588,7 +588,6 @@ fn getRValue(
             return null;
         }
 
-        // TODO: figure out new behaviour for when the upper byte is in mmio space but bottom is not
         if (r_value <= max_address) {
             r_value = memory[r_value] +
                 (@as(u16, memory[r_value + 1]) << 8);
