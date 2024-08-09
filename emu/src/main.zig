@@ -849,7 +849,7 @@ fn interpret(
                     registers,
                 );
 
-                cmp_flag = @as(i16, @bitCast(w_value)) > @as(i16, @bitCast(r_value));
+                cmp_flag = cmp_flag or @as(i16, @bitCast(w_value)) > @as(i16, @bitCast(r_value));
             },
             .op_shf => {
                 var w_value = getRegister(

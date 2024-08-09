@@ -35,8 +35,7 @@ MOV = 000 WW DRR // set W to R
 STO = 001 WW DRR // store R starting at memory[W] 
 ADD = 010 WW DRR // set W to W+R (wrapping)
 CMP = 011 WW DRR // if W is greater than R (signed), ignore the next attempt to
-  modify PC, otherwise allow the next attempt to modify the PC, the PC is
-  mutable by default
+  modify PC, the PC is mutable by default
 SHF = 100 WW DRR // set W to W bitshifted by (R & 0xf) bits,
   if bit 4 of R is set, shift left, otherwise shift right,
   if bit 5 of R is set, perform a rotation rather than a shift,
@@ -270,7 +269,10 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   JEQ dest1, src1, src2
 
   ; jump to imm if dest and src are equal
-  JEQI dest, src, imm
+  JEQRI dest, src, imm
+
+  ; jump to imm2 if imm1 and src are equal
+  JEQI dest, imm1, imm2
 
   ; jump to src2 if dest and src1 are not equal
   JNE dest, src1, src2

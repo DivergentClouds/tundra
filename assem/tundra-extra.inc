@@ -150,7 +150,7 @@ macro clear_flag
   jmp pc ; clears cmp flag, pc is incremented post-fetch, pre-execution
 end macro
 
-; jump if equal
+; jump to src2 if dest equals src1
 macro jeq? dest, src1, src2
   internal_assert_not_reg dest, pc
   internal_assert_not_reg src1, *pc
@@ -163,8 +163,8 @@ macro jeq? dest, src1, src2
   jmp src2
 end macro
 
-; jump if equal, immediate
-macro jeqi? dest, src, imm
+; jump to imm if dest equals src
+macro jeqri? dest, src, imm
   internal_assert_not_reg dest, pc
   internal_assert_not_reg src, *pc
 
@@ -173,6 +173,17 @@ macro jeqi? dest, src, imm
   cmpi dest, 0x8000
 
   jmpi imm
+end macro
+
+; jump to imm2 if dest equals imm1
+macro jeqi? dest, imm1, imm2
+  internal_assert_not_reg dest, pc
+
+  xori dest, imm1
+  addi dest, 0x8000    ; smallest signed 16 bit value
+  cmpi dest, 0x8000
+
+  jmpi imm2
 end macro
 
 ; jump if not equal
