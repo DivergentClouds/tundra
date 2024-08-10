@@ -266,7 +266,7 @@ and 'imm' marks a 16-bit immediate. note that 'src' may not be '*pc' and
   JMPI imm
 
   ; jump to src2 if dest and src1 are equal
-  JEQ dest1, src1, src2
+  JEQ dest, src1, src2
 
   ; jump to imm if dest and src are equal
   JEQRI dest, src, imm
