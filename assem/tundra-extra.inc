@@ -30,7 +30,7 @@ virtual at 0xfff0
   .halt? = 0xffff
 end virtual
 
-stack_base? = 0xFFEE
+stack_base? = 0xFFEF
 
 ; for internal use, makes sure a valid register is given
 macro internal_assert_not_reg? reg1, reg2

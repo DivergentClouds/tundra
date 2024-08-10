@@ -420,7 +420,7 @@ in addition, tundra-extra.inc defines following constants:
 
   MMIO.HALT = 0xFFFF
 
-  STACK_BASE = 0xFFEE
+  STACK_BASE = 0xFFEF
 
   ; the following is only defined once STACK_INIT is run
   SP = C
