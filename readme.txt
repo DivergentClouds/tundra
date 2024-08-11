@@ -35,7 +35,7 @@ MOV = 000 WW DRR // set W to R
 STO = 001 WW DRR // store R starting at memory[W] 
 ADD = 010 WW DRR // set W to W+R (wrapping)
 CMP = 011 WW DRR // if W is greater than R (signed), ignore the next attempt to
-  modify PC, the PC is mutable by default
+  modify the PC, otherwise, allow it
 SHF = 100 WW DRR // set W to W bitshifted by (R & 0xf) bits,
   if bit 4 of R is set, shift left, otherwise shift right,
   if bit 5 of R is set, perform a rotation rather than a shift,
@@ -50,6 +50,7 @@ Notes
 - dereferencing R will load memory[R] and memory[R + 1]
 - PC is incremented by 1 after an instruction is fetched
 - dereferencing PC will increment it by 2 after fetch but before execution
+- the PC is mutable by default
 
 
 MMIO

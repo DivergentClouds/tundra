@@ -645,7 +645,7 @@ fn cleanupIOWindows(
         stderr.print("Error: CouldNotRestoreConsoleOutputMode, code: {d}\n", .{c.GetLastError()}) catch {};
     }
 
-    if (ctrl_type == 0xffff) // 0xffff ==
+    if (ctrl_type == 0xffff) // 0xffff means not called as callback, continue execution
         return std.os.windows.TRUE
     else
         c.ExitProcess(@intCast(ctrl_type + 1));
@@ -849,7 +849,7 @@ fn interpret(
                     registers,
                 );
 
-                cmp_flag = cmp_flag or @as(i16, @bitCast(w_value)) > @as(i16, @bitCast(r_value));
+                cmp_flag = @as(i16, @bitCast(w_value)) > @as(i16, @bitCast(r_value));
             },
             .op_shf => {
                 var w_value = getRegister(
