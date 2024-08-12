@@ -432,12 +432,12 @@ macro push? src
   internal_assert_not_reg src, *pc
 
   sto sp, src
-  addi sp, -2
+  subi sp, 2
 end macro
 
 macro pushi? imm
   stoi sp, imm
-  addi sp, -2
+  subi sp, 2
 end macro
 
 macro pop? dest
