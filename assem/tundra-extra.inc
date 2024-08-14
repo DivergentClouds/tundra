@@ -23,7 +23,7 @@ virtual at 0xfff0
   .read_storage? = 0xfff5
   .storage_count? = 0xfff6
   .storage_index? = 0xfff7
-  .zero_memory? = 0xfff8
+  .zero_storage? = 0xfff8
   .boundary_address? = 0xfff9
   .interrupt_address? = 0xfffa
   .previous_interrupt? = 0xfffb

@@ -148,7 +148,7 @@ const MemoryMap = enum(u16) {
     /// write: set which storage device to access, 0-indexed
     storage_index,
     /// write: set a region of memory to zero
-    zero_mem,
+    zero_storage,
     /// read/write: holds the kernel boundary address
     boundary_address,
     /// read/write: holds the address to jump to on interrupt
@@ -408,15 +408,15 @@ fn mmio(
                 state.storage_index = value;
             }
         },
-        .zero_mem => {
+        .zero_storage => {
             if (optional_value) |value| {
-                @memset(
-                    state.memory[state.access_address..@min(
-                        state.memory.len,
-                        state.access_address + value,
-                    )],
-                    0,
-                );
+                const write_size = @as(usize, value) * block_size;
+                const storage_address = @as(usize, state.block_index) * block_size;
+
+                if (optional_storage_file) |storage_file| {
+                    try storage_file.seekTo(storage_address);
+                    try storage_file.writer().writeByteNTimes(0, write_size);
+                }
             }
         },
         .boundary_address => {

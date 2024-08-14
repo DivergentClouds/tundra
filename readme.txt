@@ -88,9 +88,9 @@ Memory Map
 | 0xfff7  | write      | set which storage device to       |
 |         |            | access, 0-indexed                 |
 |---------|------------|-----------------------------------|
-| 0xfff8  | write      | set the given number of bytes     |
-|         |            | starting at the memory access     |
-|         |            | address to 0                      |
+| 0xfff8  | write      | set the given number of blocks    |
+|         |            | starting at the storage block     |
+|         |            | index to 0                        |
 |---------|------------|-----------------------------------|
 | 0xfff9  | read/write | holds the kernel boundary address |
 |---------|------------|-----------------------------------|
@@ -411,7 +411,7 @@ in addition, tundra-extra.inc defines following constants:
 
   MMIO.STORAGE_INDEX = 0xFFF7
 
-  MMIO.ZERO_MEMORY = 0xFFF8
+  MMIO.ZERO_STORAGE = 0xFFF8
 
   MMIO.BOUNDARY_ADDRESS = 0xFFF9
 
