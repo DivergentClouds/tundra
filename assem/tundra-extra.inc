@@ -142,7 +142,8 @@ end macro
 
 ; jump immediate
 macro jmpi? imm
-   addi pc, imm - $
+  ; subtract 2 because pc is incremented by 2 when the immediate is read
+  addi pc, imm - $ - 2
 end macro
 
 ; clear cmp flag, making jumps until the next `cmp` unconditional
