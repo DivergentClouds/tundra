@@ -142,7 +142,7 @@ end macro
 
 ; jump immediate
 macro jmpi? imm
-   movi pc, imm
+   addi pc, imm - $
 end macro
 
 ; clear cmp flag, making jumps until the next `cmp` unconditional
