@@ -30,6 +30,26 @@ virtual at 0xfff0
   .halt? = 0xffff
 end virtual
 
+
+char?:
+  .lf? = 0x0a           ; IN/OUT
+  .bs? = 0x08           ; IN/OUT
+  .up? = 0xe9           ; IN/OUT
+  .down? = 0xeb         ; IN/OUT
+  .left? = 0xea         ; IN/OUT
+  .right? = 0xec        ; IN/OUT
+
+  .insert? = 0xee       ; IN
+  .delete? = 0xf8       ; IN
+  .home? = 0xe8         ; IN
+  .end? = 0xe5          ; IN
+
+  .cr? = 0x0d           ; OUT
+  .clear_right? = 0xd2  ; OUT
+  .clear_down? = 0xc2   ; OUT
+  .clear_all? = 0xd8    ; OUT
+  .to_origin? = 0xc8    ; OUT
+
 stack_base? = 0xFFEF
 
 ; for internal use, makes sure a valid register is given
@@ -63,44 +83,12 @@ macro ori? dest, imm
   not dest
 end macro
 
-macro shli? dest, imm
+macro rotli dest, imm
   internal_assert_not_reg dest, pc
-  assert imm < 16
-  assert imm >= 0
- 
-  shfi dest, imm or 10000b
-end macro
 
-macro shri? dest, imm
-  internal_assert_not_reg dest, pc
-  assert imm < 16
-  assert imm >= 0
- 
-  shfi dest, imm
-end macro
+  assert imm >= 0 & imm < 0x8000
 
-macro asri? dest, imm
-  internal_assert_not_reg dest, pc
-  assert imm < 16
-  assert imm >= 0
-  
-  shfi dest, imm or 1000000b
-end macro
-
-macro rtli? dest, imm
-  internal_assert_not_reg dest, pc
-  assert imm < 16
-  assert imm >= 0
-  
-  shfi dest, imm or 110000b
-end macro
-
-macro rtri? dest, imm
-  internal_assert_not_reg dest, pc
-  assert imm < 16
-  assert imm >= 0
-  
-  shfi dest, imm or 100000b
+  rot dest, 0 - imm
 end macro
 
 macro neg? dest

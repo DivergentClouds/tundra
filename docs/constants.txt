@@ -1,0 +1,85 @@
+==========
+= Tundra =
+==========
+
+
+Constants
+=========
+
+Overview
+--------
+tundra-extra.inc includes tundra-core.inc along with some macros and constants.
+for information on macros defined tundra-extra.inc, see macros.txt.
+
+Stack Constants
+---------------
+  STACK_BASE = 0xFFEF
+
+  ; the following is only defined once STACK_INIT is run
+  SP = C
+
+MMIO Addresses
+--------------
+  MMIO = 0xFFF0
+
+  MMIO.READ_CHAR = 0xFFF0
+
+  MMIO.WRITE_CHAR = 0xFFF1
+
+  MMIO.ACCESS_ADDRESS = 0xFFF2
+
+  MMIO.BLOCK_INDEX = 0xFFF3
+
+  MMIO.WRITE_STORAGE = 0xFFF4
+
+  MMIO.READ_STORAGE = 0xFFF5
+
+  MMIO.STORAGE_COUNT = 0xFFF6
+
+  MMIO.STORAGE_INDEX = 0xFFF7
+
+  MMIO.ZERO_STORAGE = 0xFFF8
+
+  MMIO.BOUNDARY_ADDRESS = 0xFFF9
+
+  MMIO.INTERRUPT_ADDRESS = 0xFFFA
+
+  MMIO.PREVIOUS_INTERRUPT = 0xFFFB
+
+  MMIO.HALT = 0xFFFF
+
+Terminal Input/Output Values
+----------------------------
+  CHAR.LF = 0x0A
+
+  CHAR.BS = 0x08
+
+  CHAR.UP = 0xE9
+
+  CHAR.DOWN = 0xEB
+
+  CHAR.LEFT = 0xEA
+
+  CHAR.RIGHT = 0xEC
+
+Terminal Input Values
+---------------------
+  CHAR.INSERT = 0xEE
+
+  CHAR.DELETE = 0xF8
+
+  CHAR.HOME = 0xE8
+
+  CHAR.END = 0xE5
+
+Terminal Output Values
+----------------------
+  CHAR.CR = 0x0D
+
+  CHAR.CLEAR_RIGHT = 0xD2
+
+  CHAR.CLEAR_DOWN = 0xC2
+
+  CHAR.CLEAR_ALL = 0xD8
+
+  CHAR.TO_ORIGIN = 0xC8

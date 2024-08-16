@@ -191,7 +191,7 @@ const Opcode = enum(u3) {
     op_sto,
     op_add,
     op_cmp,
-    op_shf,
+    op_rot,
     op_and,
     op_nor,
     op_xor,
@@ -851,39 +851,17 @@ fn interpret(
 
                 cmp_flag = @as(i16, @bitCast(w_value)) > @as(i16, @bitCast(r_value));
             },
-            .op_shf => {
-                var w_value = getRegister(
+            .op_rot => {
+                const w_value = getRegister(
                     instruction.reg_w,
                     registers,
                 );
 
-                const shift_value: u4 = @truncate(r_value);
-                const do_left = r_value & 0b1_0000 != 0;
-                const do_rotate = r_value & 0b10_0000 != 0;
-                const do_sign_extend = r_value & 0b100_0000 != 0;
-
-                // left vs right shift
-                if (do_left) {
-                    if (do_rotate) {
-                        w_value = std.math.rotl(u16, w_value, shift_value);
-                    } else {
-                        w_value <<= shift_value;
-                    }
-                } else {
-                    if (do_rotate) {
-                        w_value = std.math.rotr(u16, w_value, shift_value);
-                    } else if (do_sign_extend) {
-                        w_value = @bitCast(
-                            @divTrunc(@as(i16, @bitCast(w_value)), (@as(i16, 1) << shift_value)),
-                        );
-                    } else {
-                        w_value >>= shift_value;
-                    }
-                }
+                const value = std.math.rotr(u16, w_value, r_value);
 
                 setRegister(
                     instruction.reg_w,
-                    w_value,
+                    value,
                     &cmp_flag,
                     &registers,
                 );

@@ -64,7 +64,7 @@ macro_gen_opcode
     sto, 001b
     add, 010b
     cmp, 011b
-    shf, 100b
+    rot, 100b
     and, 101b
     nor, 110b
     xor, 111b

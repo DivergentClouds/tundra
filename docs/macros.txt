@@ -1,0 +1,185 @@
+==========
+= Tundra =
+==========
+
+
+Macros
+======
+
+Overview
+--------
+tundra-extra.inc includes tundra-core.inc along with some macros and constants.
+for information on constants defined in tundra-extra.inc, see constants.txt.
+the signature of a macro contains additional information on what may be passed
+to it. 'src' marks a register that may be dereferenced, 'dest' marks a register
+that may not be dereferenced, and 'imm' marks a 16-bit immediate. note that
+'src' may not be '*pc' and 'dest' may not be 'pc'. registers marked 'dest' may
+be modified by the macro.
+
+MMIO Macros
+-----------
+  ; halts execution
+  HALT
+
+Bitwise Macros
+--------------
+  ; set dest to ~dest
+  NOT dest
+
+  ; set dest to dest | src
+  OR dest, src
+
+  ; set dest to dest | imm
+  ORI dest, imm
+
+  ; rotate dest to the left by imm
+  ROTLI dest, imm
+
+Arithmetic Macros
+-----------------
+  ; set dest to the two's complement negation of dest
+  NEG dest
+
+  ; subtract src from dest
+  SUB dest, src
+
+  ; subtract imm from dest
+  SUBI dest, imm
+
+Jump Macros
+-----------
+  ; set PC to src
+  ; has no effect if CMP flag is set
+  JMP src
+
+  ; set PC to imm
+  ; has no effect if CMP flag is set
+  JMPI imm
+
+  ; jump to src2 if dest and src1 are equal
+  JEQ dest, src1, src2
+
+  ; jump to imm if dest and src are equal
+  JEQRI dest, src, imm
+
+  ; jump to imm2 if imm1 and src are equal
+  JEQI dest, imm1, imm2
+
+  ; jump to src2 if dest and src1 are not equal
+  JNE dest, src1, src2
+
+  ; jump to imm if dest and src are not equal
+  JNERI, dest, src, imm
+
+  ; jump to imm2 if dest and imm1 are not equal
+  JNEI, dest, imm1, imm2
+
+  ; jump to src2 if dest and src1 are equal, assert dest and src1 are positive
+  JEQP dest, src1, src2
+
+  ; jump to imm if dest and src are equal, assert dest and src are positive
+  JEQPRI dest, src, imm
+
+  ; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are positive
+  JEQPI dest, imm1, imm2
+
+  ; jump to src2 if dest <= src1 (unsigned)
+  JLEQU dest, src1, src2
+
+  ; jump to imm if dest <= src (unsigned)
+  JLEQURI dest, src, imm
+
+  ; jump to imm2 if dest <= imm1 (unsigned)
+  JLEQUI dest, imm1, imm2
+
+  ; jump to src2 if dest > src1 (unsigned)
+  JGTU dest, src1, src2
+
+  ; jump to imm if dest > src (unsigned)
+  JGTURI dest, src, imm
+
+  ; jump to imm2 if dest > imm1 (unsigned)
+  JGTUI dest, imm1, imm2
+
+Stack Macros
+------------
+  ; set C to STACK_BASE
+  ; this macro must be the first stack macro called
+  ; macros that use the stack reserve C as the stack pointer
+  ; you may access the stack pointer with SP once initialized
+  STACK_INIT
+
+  ; push src to the stack
+  PUSH src
+
+  ; push imm to the stack
+  PUSHI imm
+  
+  ; pop a word from the stack into dest
+  POP dest
+
+  ; pop a word of the stack into PC
+  ; has no effect if CMP flag is set
+  POPJ
+
+  ; remove the top src bytes of the stack
+  DROP src
+
+  ; remove the top imm bytes of the stack
+  DROPI imm
+
+  ; copy a value that is src bytes deep in the stack to dest
+  PEEK dest, src
+
+  ; copy a value that is imm bytes deep in the stack to dest
+  PEEKI dest, imm
+
+  ; set a value that is src1 bytes deep in the stack to src2
+  POKE src1, src2
+
+  ; set a value that is src bytes deep in the stack to imm
+  POKERI src, imm
+
+  ; set a value that is imm bytes deep in the stack to src
+  POKEIR imm, src
+
+  ; set a value that is imm1 bytes deep in the stack to imm2
+  POKEI imm1, imm2
+
+  ; push the next address to the stack and jump to src
+  ; has no effect if CMP flag is set
+  CALL src
+  
+  ; push the next address to the stack and jump to imm
+  ; has no effect if CMP flag is set
+  CALLI src
+
+  ; call imm if dest and src are equal
+  CEQRI dest, src, imm
+
+  ; call imm2 if dest and imm1 are not equal
+  CNEI dest, imm1, imm2
+
+  ; call imm if dest and src are not equal
+  CNERI dest, src, imm
+
+  ; call imm2 if dest and imm1 are equal
+  CEQI dest, imm1, imm2
+
+  ; call imm if dest and src are equal, assert dest and src are positive
+  CEQPRI dest, src, imm
+
+  ; call imm2 if dest and imm1 are equal, assert dest and src are positive
+  CEQPI dest, imm1, imm2
+
+  ; pop a word into dest before dropping src bytes from the stack followed by
+  ; jumping to dest
+  ; has no effect if CMP flag is set
+  RET dest, src
+
+  ; pop a word into dest before dropping imm bytes from the stack followed by
+  ; jumping to dest
+  ; has no effect if CMP flag is set
+  RETI dest, imm
+
+

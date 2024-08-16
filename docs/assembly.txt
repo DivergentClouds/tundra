@@ -1,0 +1,89 @@
+==========
+= Tundra =
+==========
+
+
+Assembly
+========
+
+Instruction Format
+------------------
+Instructions are composed of an opcode and 2 registers, the second of which may
+be dereferenced. There are 4 16-bit registers, the first 3 of which are general
+purpose. To dereference a register, prefix it with an asterisk.
+
+Registers
+---------
+A
+B
+C
+PC
+
+Dereferenced registers
+----------------------
+*A
+*B
+*C
+*PC
+
+Instructions
+------------
+|===============|==============================================|
+| Instruction   | Effect                                       |
+|===============|==============================================|
+| MOV dest, src | set dest to src                              |
+|---------------|----------------------------------------------|
+| STO dest, src | store src at memory[dest]                    |
+|---------------|----------------------------------------------|
+| ADD dest, src | set dest to dest + src, wrapping on overflow |
+|---------------|----------------------------------------------|
+| CMP dest, src | if dest > src (signed), ignore the next      |
+|               | attempt to modify PC, otherwise, allow it    |
+|---------------|----------------------------------------------|
+| ROT dest, src | set dest to dest rotated by src bits, if src |
+|               | is negative, then rotate left, otherwise     |
+|               | rotate right                                 |
+|---------------|----------------------------------------------|
+| AND dest, src | set dest to dest & src                       |
+|---------------|----------------------------------------------|
+| NOR dest, src | set dest to ~(dest | src)                    |
+|---------------|----------------------------------------------|
+| XOR dest, src | set dest to dest ^ src                       |
+|---------------|----------------------------------------------|
+
+Memory Access
+-------------
+- the addressing space is 0x10000 bytes long
+- data is 16-bit little endian
+- dereferencing R will load memory[R] and memory[R + 1]
+- dereferencing PC will increment it by 2 after fetch but before execution
+
+Notes
+-----
+- PC is incremented by 1 after an instruction is fetched
+- PC is mutable by default
+
+Assembling
+----------
+to assemble a Tundra program, use fasmg (https://flatassembler.net/) and
+include either 'tundra-core.inc' or 'tundra-extra.inc' (which includes
+tundra-core) at the top of your file. instructions, constants, and macros are
+not case-sensitive. semicolons start line comments.
+
+Tundra-Core
+-----------
+tundra-core.inc includes the instruction set along with macros that treat R as
+an immediate. To use them, suffix an instruction name with 'I'. as an example:
+
+  MOVI A, -1
+
+is equivalent to:
+
+  MOV A, *PC
+  dw 0xFFFF
+
+Tundra-Extra
+------------
+tundra-extra.inc contains helpful macros and constants. for more information,
+see macros.txt.
+
