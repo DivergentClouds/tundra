@@ -85,5 +85,5 @@ is equivalent to:
 Tundra-Extra
 ------------
 tundra-extra.inc contains helpful macros and constants. for more information,
-see macros.txt.
+see macros.txt and constants.txt.
 
