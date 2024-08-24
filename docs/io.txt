@@ -65,7 +65,7 @@ Notes
 - attempting to read/write memory in and above the mmio range via storage access
   is a no-op
 - attempting to read undefined storage will read 0
-- block size is 1024 bytes
+- block size is 4096 bytes
 - at most 4 storage devices may be attached
 - all read/write mmio addresses default to 0
 - the previous interrupt address defaults to 0
