@@ -13,7 +13,7 @@ const reserved_mmio_space = 0x10; // reserved space at the top of memory for mmi
 const max_address = 0xffff - reserved_mmio_space;
 const max_memory = max_address + 2; // need 1 extra byte for accessing max_address, memory is 0-indexed
 
-const block_size = 4096;
+const block_size = 2048;
 
 // this needs to be global to run hook on ctrl-c
 var state: MmioState = undefined;
