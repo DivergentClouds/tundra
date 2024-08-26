@@ -211,7 +211,7 @@ macro jnei? dest, imm1, imm2
   jmpi imm2
 end macro
 
-; jump to src2 if equal; assert positive
+; jump to src2 if equal; assert non-negative
 macro jeqp? dest, src1, src2
   internal_assert_not_reg src1, *pc
   internal_assert_not_reg src2, *pc
@@ -222,7 +222,7 @@ macro jeqp? dest, src1, src2
   jmp src2
 end macro
 
-; jump to imm if equal; assert positive
+; jump to imm if equal; assert non-negative
 macro jeqpri? dest, src, imm
   internal_assert_not_reg src, *pc
   internal_assert_not_reg dest, pc
@@ -232,7 +232,7 @@ macro jeqpri? dest, src, imm
   jmpi imm
 end macro
 
-; jump to imm2 if dest and imm1 equal; assert positive
+; jump to imm2 if dest and imm1 equal; assert non-negative
 macro jeqpi? dest, imm1, imm2
   internal_assert_not_reg dest, pc
 

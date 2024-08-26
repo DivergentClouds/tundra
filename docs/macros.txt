@@ -74,13 +74,13 @@ Jump Macros
   ; jump to imm2 if dest and imm1 are not equal
   JNEI, dest, imm1, imm2
 
-  ; jump to src2 if dest and src1 are equal, assert dest and src1 are positive
+  ; jump to src2 if dest and src1 are equal, assert dest and src1 are non-negative
   JEQP dest, src1, src2
 
-  ; jump to imm if dest and src are equal, assert dest and src are positive
+  ; jump to imm if dest and src are equal, assert dest and src are non-negative
   JEQPRI dest, src, imm
 
-  ; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are positive
+  ; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are non-negative
   JEQPI dest, imm1, imm2
 
   ; jump to src2 if dest <= src1 (unsigned)
@@ -166,10 +166,10 @@ Stack Macros
   ; call imm2 if dest and imm1 are equal
   CEQI dest, imm1, imm2
 
-  ; call imm if dest and src are equal, assert dest and src are positive
+  ; call imm if dest and src are equal, assert dest and src are non-negative
   CEQPRI dest, src, imm
 
-  ; call imm2 if dest and imm1 are equal, assert dest and src are positive
+  ; call imm2 if dest and imm1 are equal, assert dest and src are non-negative
   CEQPI dest, imm1, imm2
 
   ; pop a word into dest before dropping src bytes from the stack followed by
