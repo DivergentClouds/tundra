@@ -164,11 +164,29 @@ macro jeqri? dest, src, imm
   jmpi imm
 end macro
 
+; jump to src if dest equals imm
+macro jeqir? dest, imm, src
+  internal_assert_not_reg dest, pc
+  internal_assert_not_reg src, *pc
+
+  if imm <> 0
+    xori dest, imm
+  end if
+
+  addi dest, 0x8000    ; smallest signed 16 bit value
+  cmpi dest, 0x8000
+
+  jmp src
+end macro
+
 ; jump to imm2 if dest equals imm1
 macro jeqi? dest, imm1, imm2
   internal_assert_not_reg dest, pc
 
-  xori dest, imm1
+  if imm1 <> 0
+    xori dest, imm1
+  end if
+
   addi dest, 0x8000    ; smallest signed 16 bit value
   cmpi dest, 0x8000
 
@@ -232,11 +250,26 @@ macro jeqpri? dest, src, imm
   jmpi imm
 end macro
 
+macro jeqpir? dest, imm, src
+  internal_assert_not_reg src, *pc
+  internal_assert_not_reg dest, pc
+
+  if imm <> 0
+    xori dest, imm
+  end if
+
+  cmpi dest, 0
+  jmp src
+end macro
+
 ; jump to imm2 if dest and imm1 equal; assert non-negative
 macro jeqpi? dest, imm1, imm2
   internal_assert_not_reg dest, pc
 
-  xori dest, imm1
+  if imm1 <> 0
+    xori dest, imm1
+  end if
+
   cmpi dest, 0
   jmpi imm2
 end macro
@@ -408,6 +441,17 @@ macro jgtui? dest, imm1, imm2
     cmpi dest, -1
     jmpi imm2
   end if
+end macro
+
+; jump to src if dest == 0
+macro jeqz? dest, src
+  internal_assert_not_reg dest, pc
+  internal_assert_not_reg src, *pc
+
+  addi dest, 0x8000    ; smallest signed 16 bit value
+  cmpi dest, 0x8000
+
+  jmp src2
 end macro
 
 ; must be called before other stack macros

@@ -62,6 +62,9 @@ Jump Macros
   ; jump to imm if dest and src are equal
   JEQRI dest, src, imm
 
+  ; jump to src if dest and imm are equal
+  JEQIR dest, imm, src
+
   ; jump to imm2 if imm1 and src are equal
   JEQI dest, imm1, imm2
 
@@ -79,6 +82,9 @@ Jump Macros
 
   ; jump to imm if dest and src are equal, assert dest and src are non-negative
   JEQPRI dest, src, imm
+
+  ; jump to src if dest and imm are equal; assert dest and imm are non-negative
+  JEQPIR dest, imm, src
 
   ; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are non-negative
   JEQPI dest, imm1, imm2
