@@ -64,6 +64,8 @@ Terminal Input/Output Values
 
 Terminal Input Values
 ---------------------
+  CHAR.TAB = 0x09
+
   CHAR.INSERT = 0xEE
 
   CHAR.DELETE = 0xF8

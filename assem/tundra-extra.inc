@@ -39,6 +39,7 @@ char?:
   .left? = 0xea         ; IN/OUT
   .right? = 0xec        ; IN/OUT
 
+  .tab? = 0x09          ; IN
   .insert? = 0xee       ; IN
   .delete? = 0xf8       ; IN
   .home? = 0xe8         ; IN

@@ -307,6 +307,8 @@ fn readChar(allocator: std.mem.Allocator) !u16 {
         char = 0x08;
     } else if (char == '\r') { // parity with windows
         char = '\n';
+    } else if (char < 0x20 and char != '\n' and char != '\t' and char != 0x08) { // disallow other control codes
+        char = 0xffff;
     }
     return char;
 }
