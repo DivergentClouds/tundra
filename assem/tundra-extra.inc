@@ -84,6 +84,14 @@ macro ori? dest, imm
   not dest
 end macro
 
+macro rotri dest, imm
+  internal_assert_not_reg dest, pc
+
+  assert imm >= 0 & imm < 0x8000
+
+  rot dest, imm
+end macro
+
 macro rotli dest, imm
   internal_assert_not_reg dest, pc
 

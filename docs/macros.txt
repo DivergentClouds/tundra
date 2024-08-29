@@ -33,7 +33,12 @@ Bitwise Macros
   ORI dest, imm
 
   ; rotate dest to the left by imm
+  ; imm must be positive
   ROTLI dest, imm
+
+  ; rotate dest to the right by imm
+  ; imm must be positive
+  ROTRI dest, imm
 
 Arithmetic Macros
 -----------------
