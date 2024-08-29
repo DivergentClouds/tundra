@@ -532,14 +532,12 @@ end macro
 ; imm is offset into the stack
 macro peeki? dest, imm
   internal_assert_not_reg dest, pc
+  
+  assert imm <> 0
 
-  if imm = 0
-    mov dest, *sp
-  else
-    mov dest, sp
-    addi dest, imm
-    mov dest, *dest
-  end if
+  mov dest, sp
+  addi dest, imm
+  mov dest, *dest
 end macro
 
 ; src1 is offset into stack, src2 is value to poke
@@ -555,13 +553,11 @@ end macro
 ; poke, immediate, immediate
 ; imm1 is offset into stack, imm2 is value to poke
 macro pokei? imm1, imm2
-  if imm1 = 0
-    stoi sp, imm2
-  else
-    addi sp, imm1
-    stoi sp, imm2
-    subi sp, imm1
-  end if
+  assert imm1 <> 0
+
+  addi sp, imm1
+  stoi sp, imm2
+  subi sp, imm1
 end macro
 
 ; poke, immediate, register
@@ -569,13 +565,11 @@ end macro
 macro pokeir? imm, src
   internal_assert_not_reg src, *pc
 
-  if imm = 0
-    sto sp, src
-  else
-    addi sp, imm
-    sto sp, src
-    subi sp, imm
-  end if
+  assert imm <> 0
+
+  addi sp, imm
+  sto sp, src
+  subi sp, imm
 end macro
 
 ; poke, register, immediate
