@@ -211,4 +211,8 @@ before any stack or function macros.
   ; jumping to dest
   RETI dest, imm
 
+Other Macros
+------------
+  ; override the result of CMP to allow mutating PC
+  CLEAR_FLAG
 
