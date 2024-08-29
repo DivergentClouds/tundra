@@ -50,7 +50,7 @@ MMIO Addresses
 
 Terminal Input/Output Values
 ----------------------------
-  CHAR.LF = 0x0A
+  CHAR.CR = 0x0D
 
   CHAR.BS = 0x08
 
@@ -76,7 +76,7 @@ Terminal Input Values
 
 Terminal Output Values
 ----------------------
-  CHAR.CR = 0x0D
+  CHAR.LF = 0x0A
 
   CHAR.CLEAR_RIGHT = 0xD2
 
