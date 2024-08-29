@@ -82,16 +82,20 @@ all jump macros respect the result of CMP.
   ; jump to imm2 if dest and imm1 are not equal
   JNEI, dest, imm1, imm2
 
-  ; jump to src2 if dest and src1 are equal, assert dest and src1 are non-negative
+  ; jump to src2 if dest and src1 are equal
+  ; asserts that dest and src1 are non-negative
   JEQP dest, src1, src2
 
-  ; jump to imm if dest and src are equal, assert dest and src are non-negative
+  ; jump to imm if dest and src are equal
+  ; asserts that dest and src are non-negative
   JEQPRI dest, src, imm
 
-  ; jump to src if dest and imm are equal; assert dest and imm are non-negative
+  ; jump to src if dest and imm are equal
+  ; asserts that dest and imm are non-negative
   JEQPIR dest, imm, src
 
-  ; jump to imm2 if dest and imm1 are equal, assert dest and imm1 are non-negative
+  ; jump to imm2 if dest and imm1 are equal
+  ; asserts that dest and imm1 are non-negative
   JEQPI dest, imm1, imm2
 
   ; jump to src2 if dest <= src1 (unsigned)
@@ -126,9 +130,20 @@ STACK_INIT must be called before any stack or function macros.
 
   ; push imm to the stack
   PUSHI imm
+
+  ; push src to the stack, as a byte
+  ; asserts that the upper byte of src is 0
+  PUSHB src
+
+  ; push imm to the stack
+  ; asserts that the upper byte of imm is 0
+  PUSHBI imm
   
   ; pop a word from the stack into dest
   POP dest
+
+  ; pop a byte from the stack into dest
+  POPB dest
 
   ; remove the top src bytes of the stack
   DROP src
@@ -177,10 +192,12 @@ before any stack or function macros.
   ; call imm2 if dest and imm1 are equal
   CEQI dest, imm1, imm2
 
-  ; call imm if dest and src are equal, assert dest and src are non-negative
+  ; call imm if dest and src are equal
+  ; asserts that dest and src are non-negative
   CEQPRI dest, src, imm
 
-  ; call imm2 if dest and imm1 are equal, assert dest and src are non-negative
+  ; call imm2 if dest and imm1 are equal
+  ; asserts dest and src are non-negative
   CEQPI dest, imm1, imm2
 
   ; pop a word of the stack into PC

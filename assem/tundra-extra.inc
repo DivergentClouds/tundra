@@ -482,12 +482,36 @@ macro pushi? imm
   subi sp, 2
 end macro
 
+; asserts that src is in the range 0x00 through 0xff
+macro pushb? src
+  internal_assert_not_reg src, *pc
+
+  sto sp, src
+  subi sp, 1
+end macro
+
+; asserts that src is in the range 0x00 through 0xff
+macro pushbi? imm
+  assert imm > 0 & imm <= 0xff
+
+  stoi sp, imm
+  subi sp, 1
+end macro
+
+; see popj to pop into pc
 macro pop? dest
-  ; see popj to pop into pc
   internal_assert_not_reg dest, pc
 
   addi sp, 2
   mov dest, *sp
+end macro
+
+macro popb? dest
+  internal_assert_not_reg dest, pc
+
+  addi sp, 1
+  mov dest, *sp
+  andi dest, 0xff
 end macro
 
 macro popj?
@@ -516,7 +540,6 @@ macro peeki? dest, imm
     addi dest, imm
     mov dest, *dest
   end if
-
 end macro
 
 ; src1 is offset into stack, src2 is value to poke
