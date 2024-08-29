@@ -53,12 +53,12 @@ Arithmetic Macros
 
 Jump Macros
 -----------
+all jump macros respect the result of CMP.
+
   ; set PC to src
-  ; has no effect if CMP flag is set
   JMP src
 
   ; set PC to imm
-  ; has no effect if CMP flag is set
   JMPI imm
 
   ; jump to src2 if dest and src1 are equal
@@ -114,10 +114,11 @@ Jump Macros
 
 Stack Macros
 ------------
+STACK_INIT must be called before any stack or function macros.
+
   ; set C to STACK_BASE
-  ; this macro must be the first stack macro called
-  ; macros that use the stack reserve C as the stack pointer
-  ; you may access the stack pointer with SP once initialized
+  ; reserves C as the stack pointer
+  ; enables the alias SP for C
   STACK_INIT
 
   ; push src to the stack
@@ -128,10 +129,6 @@ Stack Macros
   
   ; pop a word from the stack into dest
   POP dest
-
-  ; pop a word of the stack into PC
-  ; has no effect if CMP flag is set
-  POPJ
 
   ; remove the top src bytes of the stack
   DROP src
@@ -157,12 +154,15 @@ Stack Macros
   ; set a value that is imm1 bytes deep in the stack to imm2
   POKEI imm1, imm2
 
+Function Macros
+---------------
+all function macros respect the result of CMP. STACK_INIT must be called
+before any stack or function macros.
+
   ; push the next address to the stack and jump to src
-  ; has no effect if CMP flag is set
   CALL src
   
   ; push the next address to the stack and jump to imm
-  ; has no effect if CMP flag is set
   CALLI src
 
   ; call imm if dest and src are equal
@@ -183,14 +183,15 @@ Stack Macros
   ; call imm2 if dest and imm1 are equal, assert dest and src are non-negative
   CEQPI dest, imm1, imm2
 
+  ; pop a word of the stack into PC
+  POPJ
+
   ; pop a word into dest before dropping src bytes from the stack followed by
   ; jumping to dest
-  ; has no effect if CMP flag is set
   RET dest, src
 
   ; pop a word into dest before dropping imm bytes from the stack followed by
   ; jumping to dest
-  ; has no effect if CMP flag is set
   RETI dest, imm
 
 
