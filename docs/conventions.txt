@@ -8,18 +8,18 @@ Conventions
 
 Calling Convention
 ------------------
-1)  push arguments to stack
-2a) push return address to stack
+1)  push arguments to the stack
+2a) push return address to the stack
 2b) jump to function
 3)  run function body
 4)  load return value into the `a` register
-5a) pop return address into `b` register (if the function had no arguments and
-  no local variables are on the stack, the register may be `pc`)
-5b) drop arguments and local variables from stack if they exist
-5c) jump to return address if not already done (in `b` register)
+5)  drop any local variables from the stack if they exist
+6a) pop return address into `b` register (if the function had no arguments, the
+      register may be `pc`)
+6b) drop arguments from the stack if they exist
+7c) jump to return address if not already done (in `b` register)
 
 Notes
 -----
 - step 2 can be done via the `call` family of macros
-- step 5 can be done via the `ret` family of macros
-- registers are not preserved during function calls
+- step 6 can be done via the `ret` family of macros
