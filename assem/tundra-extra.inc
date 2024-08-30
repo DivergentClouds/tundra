@@ -89,7 +89,7 @@ macro rotri dest, imm
 
   assert imm >= 0 & imm < 0x8000
 
-  rot dest, imm
+  roti dest, imm
 end macro
 
 macro rotli dest, imm
@@ -97,7 +97,7 @@ macro rotli dest, imm
 
   assert imm >= 0 & imm < 0x8000
 
-  rot dest, 0 - imm
+  roti dest, 0 - imm
 end macro
 
 macro neg? dest
