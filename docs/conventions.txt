@@ -21,5 +21,6 @@ Calling Convention
 
 Notes
 -----
+- all arguments must be one word wide
 - step 2 can be done via the `call` family of macros
 - step 6 can be done via the `ret` family of macros
