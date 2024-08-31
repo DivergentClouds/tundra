@@ -735,14 +735,14 @@ fn interpret(
     }
 
     while (state.running) {
-        const instruction = parseInstruction(memory[registers[pc]]);
-
-        registers[pc] +|= 1;
-
         // entered non-executable mmio area
         if (registers[pc] > max_address) {
             return error.EnteredMMIOSpace;
         }
+
+        const instruction = parseInstruction(memory[registers[pc]]);
+
+        registers[pc] +|= 1;
 
         if (checkBoundary(registers[pc] - 1, registers[pc], &registers)) {
             continue;
