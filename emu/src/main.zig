@@ -748,8 +748,10 @@ fn interpret(
             continue;
         }
 
+        var bufferred_stderr = std.io.bufferedWriter(stderr);
+
         if (debugger) {
-            try stderr.print("{x:0>4}: ", .{registers[pc] -% 1});
+            try bufferred_stderr.writer().print("{x:0>4}: ", .{registers[pc] -% 1});
         }
 
         const optional_r_value =
@@ -761,7 +763,7 @@ fn interpret(
         );
 
         if (debugger) {
-            try stderr.print("{s} {s: >2} ({x:0>4}), {s}{s: <2} ({x:0>4})\n", .{
+            try bufferred_stderr.writer().print("{s} {s: >2} ({x:0>4}), {s}{s: <2} ({x:0>4})\n", .{
                 @tagName(instruction.opcode)[3..],
                 @tagName(instruction.reg_w),
                 registers[@intFromEnum(instruction.reg_w)],
@@ -774,7 +776,7 @@ fn interpret(
             });
             if (instruction.deref_r) {
                 if (optional_r_value != null) {
-                    try stderr.print(
+                    try bufferred_stderr.writer().print(
                         "                     [{x:0>4}{s}]\n",
                         .{
                             optional_r_value.?,
@@ -786,6 +788,8 @@ fn interpret(
                     );
                 }
             }
+
+            try bufferred_stderr.flush();
         }
 
         if (optional_r_value == null) {
