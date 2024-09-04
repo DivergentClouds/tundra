@@ -18,40 +18,37 @@ Memory Map
 |---------|------------|-----------------------------------|
 | 0xfff1  | write      | write LSB to the terminal         |
 |---------|------------|-----------------------------------|
-| 0xfff2  | read/write | holds the memory access address   |
+| 0xfff2  | read/write | holds the storage block index     |
 |---------|------------|-----------------------------------|
-| 0xfff3  | read/write | holds the storage block index     |
+| 0xfff3  | write      | write a block from memory         |
+|         |            | starting at the given address     |
+|         |            | into storage at the block index   |
 |---------|------------|-----------------------------------|
-| 0xfff4  | write      | write the given number of blocks  |
-|         |            | from memory starting at the       |
-|         |            | access address into storage       |
-|         |            | starting at the block index       |
+| 0xfff4  | write      | read a block from storage         |
+|         |            | specified by the block index into |
+|         |            | memory starting at the given      |
+|         |            | address                           |
 |---------|------------|-----------------------------------|
-| 0xfff5  | write      | read the given number of blocks   |
-|         |            | from storage starting at the      |
-|         |            | block index into memory starting  |
-|         |            | at the access address             |
-|---------|------------|-----------------------------------|
-| 0xfff6  | read       | read the number of attached       |
+| 0xfff5  | read       | read the number of attached       |
 |         |            | storage devices                   |
 |---------|------------|-----------------------------------|
-| 0xfff7  | write      | set which storage device to       |
+| 0xfff6  | write      | set which storage device to       |
 |         |            | access, 0-indexed                 |
 |---------|------------|-----------------------------------|
-| 0xfff8  | write      | set the given number of blocks    |
+| 0xfff7  | write      | set the given number of blocks    |
 |         |            | starting at the storage block     |
 |         |            | index to 0                        |
 |---------|------------|-----------------------------------|
-| 0xfff9  | read/write | holds the kernel boundary address |
+| 0xfff8  | read/write | holds the kernel boundary address |
 |---------|------------|-----------------------------------|
-| 0xfffa  | read/write | holds the kernel interrupt        |
+| 0xfff9  | read/write | holds the kernel interrupt        |
 |         |            | address. if code executing below  |
 |         |            | the kernel boundary attempts to   |
 |         |            | access memory addresses greater   |
 |         |            | than or equal to the boundary,    |
 |         |            | a jump to this address occurs     |
 |---------|------------|-----------------------------------|
-| 0xfffb  | read       | holds the previous address an     |
+| 0xfffa  | read       | holds the previous address an     |
 |         |            | interrupt happened from           |
 |---------|------------|-----------------------------------|
 | 0xffff  | write      | halt execution                    |

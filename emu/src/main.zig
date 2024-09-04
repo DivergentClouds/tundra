@@ -135,8 +135,6 @@ const MemoryMap = enum(u16) {
     char_in = 0xfff0,
     /// write: writes LSB to output (stdout)
     char_out,
-    /// read/write: holds the memory access address
-    access_address,
     /// read/write: holds the storage block index
     block_index,
     /// write: write to storage from memory
@@ -215,7 +213,6 @@ const MmioState = switch (builtin.os.tag) {
     .windows => struct {
         allocator: std.mem.Allocator,
         running: bool,
-        access_address: u16,
         block_index: u16,
         storage_files: []std.fs.File,
         storage_index: u16,
@@ -229,7 +226,6 @@ const MmioState = switch (builtin.os.tag) {
     else => struct {
         allocator: std.mem.Allocator,
         running: bool,
-        access_address: u16,
         block_index: u16,
         storage_files: []std.fs.File,
         storage_index: u16,
@@ -336,13 +332,6 @@ fn mmio(
                 );
             }
         },
-        .access_address => {
-            if (optional_value) |value| {
-                state.access_address = value;
-            } else {
-                return state.access_address;
-            }
-        },
         .block_index => {
             if (optional_value) |value| {
                 state.block_index = value;
@@ -352,32 +341,32 @@ fn mmio(
         },
         .read_storage => {
             if (optional_value) |value| {
-                const read_size = @as(usize, value) * block_size;
                 const storage_address = @as(usize, state.block_index) * block_size;
+                const end_address = value +| block_size;
 
                 if (optional_storage_file) |storage_file| {
                     try storage_file.seekTo(storage_address);
                     const amount_read = try storage_file.reader().readAll(
-                        state.memory[state.access_address..@min(
-                            state.memory.len,
-                            state.access_address +| read_size,
+                        state.memory[value..@min(
+                            max_memory,
+                            end_address,
                         )],
                     );
 
-                    if (amount_read < read_size) {
+                    if (amount_read < block_size) {
                         @memset(
-                            state.memory[amount_read + state.access_address .. @min(
-                                state.memory.len,
-                                state.access_address +| read_size,
+                            state.memory[amount_read + value .. @min(
+                                max_memory,
+                                end_address,
                             )],
                             0,
                         );
                     }
                 } else {
                     @memset(
-                        state.memory[state.access_address..@min(
-                            state.memory.len,
-                            state.access_address +| read_size,
+                        state.memory[value..@min(
+                            max_memory,
+                            end_address,
                         )],
                         0,
                     );
@@ -386,17 +375,22 @@ fn mmio(
         },
         .write_storage => {
             if (optional_value) |value| {
-                const write_size = @as(usize, value) * block_size;
                 const storage_address = @as(usize, state.block_index) * block_size;
+                const end_address = value +| block_size;
 
                 if (optional_storage_file) |storage_file| {
                     try storage_file.seekTo(storage_address);
                     try storage_file.writer().writeAll(
-                        state.memory[state.access_address..@min(
-                            state.memory.len,
-                            state.access_address + write_size,
+                        state.memory[value..@min(
+                            max_memory,
+                            end_address,
                         )],
                     );
+
+                    const remaining = value -| @min(max_memory, end_address);
+                    if (remaining > 0) {
+                        try storage_file.writer().writeByteNTimes(0, remaining);
+                    }
                 }
             }
         },
@@ -670,7 +664,6 @@ fn interpret(
     state = .{
         .allocator = allocator,
         .running = true,
-        .access_address = 0,
         .block_index = 0,
         .storage_files = storage,
         .storage_index = 0,
