@@ -53,7 +53,8 @@ Arithmetic Macros
 
 Jump Macros
 -----------
-all jump macros respect the result of CMP.
+all jump macros respect the result of CMP. immediate jump macros require that
+the target location is within the program, in case of relocation.
 
   ; set PC to src
   JMP src
@@ -172,13 +173,14 @@ STACK_INIT must be called before any stack or function macros.
 Function Macros
 ---------------
 all function macros respect the result of CMP. STACK_INIT must be called
-before any stack or function macros.
+before any stack or function macros. CRELI is the only calling function macro
+that respects relocation.
 
-  ; push the next address to the stack and jump to src
+  ; call src
   CALL src
   
-  ; push the next address to the stack and jump to imm
-  CALLI src
+  ; call imm
+  CALLI imm
 
   ; call imm if dest and src are equal
   CEQRI dest, src, imm
@@ -200,15 +202,16 @@ before any stack or function macros.
   ; asserts dest and src are non-negative
   CEQPI dest, imm1, imm2
 
+  ; call imm, respecting relocation
+  CRELI dest, imm
+
   ; pop a word of the stack into PC
   POPJ
 
-  ; pop a word into dest before dropping src bytes from the stack followed by
-  ; jumping to dest
+  ; return from the current function, dropping src bytes from the stack
   RET dest, src
 
-  ; pop a word into dest before dropping imm bytes from the stack followed by
-  ; jumping to dest
+  ; return from the current function, dropping imm bytes from the stack
   RETI dest, imm
 
 Other Macros
@@ -216,7 +219,8 @@ Other Macros
   ; override the result of CMP to allow mutating PC
   CLEAR_FLAG
 
-  ; MOV an address from elsewhere in the program into dest, taking into account relocation
+  ; MOV an address from elsewhere in the program into dest, respecting
+  ; relocation 
   ; not for use on addresses from outside the program, such as MMIO
-  LOADI dest, imm
+  MOVRELI dest, imm
 
