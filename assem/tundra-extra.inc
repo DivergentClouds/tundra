@@ -131,7 +131,7 @@ end macro
 
 ; mov an address into dest, relative to the current position
 ; useful if code has been relocated
-macro loadi dest, imm
+macro loadi? dest, imm
   internal_assert_not_reg dest, pc
 
   ; mmio addresses are never relocated
