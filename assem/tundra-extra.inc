@@ -130,17 +130,18 @@ macro movb? dest, src
 end macro
 
 ; mov an address into dest, relative to the current position
-; useful if code has been relocated
-macro loadi? dest, imm
+; for relocatable code
+macro movreli? dest, imm
   internal_assert_not_reg dest, pc
 
   ; mmio addresses are never relocated
   assert imm >= 0 & imm < mmio
   
   ; not equivelant to $ in case of code relocation
-  mov dest, pc 
-  ; subtract 2 because pc is incremented by 2 when the immediate is read
-  addi dest, imm - $ - 2
+  mov dest, pc
+
+  ; add 2 because 2 instructions in macro
+  addi dest, imm - $ + 2
 end macro
 
 ; jump
@@ -687,6 +688,17 @@ macro cneri? dest, src, imm
   cmpi dest, 0x7ffe
 
   calli imm
+end macro
+
+; calli, but for relocatable code
+macro creli? dest, imm
+  local ret_addr
+
+  movreli dest, ret_addr
+  push dest
+  jmpi imm
+  dropi 2               ; if cmp caused jump to be skipped, drop return address
+  ret_addr:
 end macro
 
 macro ret? dest, src
