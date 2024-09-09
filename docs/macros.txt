@@ -216,3 +216,7 @@ Other Macros
   ; override the result of CMP to allow mutating PC
   CLEAR_FLAG
 
+  ; MOV an address from elsewhere in the program into dest, taking into account relocation
+  ; not for use on addresses from outside the program, such as MMIO
+  LOADI dest, imm
+

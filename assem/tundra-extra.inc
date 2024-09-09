@@ -129,11 +129,25 @@ macro movb? dest, src
   andi dest, 0xff
 end macro
 
+; mov an address into dest, relative to the current position
+; useful if code has been relocated
+macro loadi dest, imm
+  internal_assert_not_reg dest, pc
+
+  ; mmio addresses are never relocated
+  assert imm >= 0 & imm < mmio
+  
+  ; not equivelant to $ in case of code relocation
+  mov dest, pc 
+  ; subtract 2 because pc is incremented by 2 when the immediate is read
+  addi dest, imm - $ - 2
+end macro
+
 ; jump
 macro jmp? src
   internal_assert_not_reg src, *pc
 
-   mov pc, src
+  mov pc, src
 end macro
 
 ; jump immediate
