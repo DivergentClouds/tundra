@@ -12,6 +12,9 @@
 ; AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 ; OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+if ~ definite internal_tundra_core_guard
+internal_tundra_core_guard := 1
+
 element register
     element a? : register + 0
     element b? : register + 1
@@ -69,3 +72,5 @@ macro_gen_opcode
     nor, 110b
     xor, 111b
 macro_gen_opcode_end
+
+end if

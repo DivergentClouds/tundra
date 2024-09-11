@@ -11,6 +11,9 @@
 ; AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 ; OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+if ~ definite internal_tundra_extra_guard
+internal_tundra_extra_guard := 1
+
 include 'tundra-core.inc'
 
 virtual at 0xfff0
@@ -737,3 +740,5 @@ macro reti? dest, imm
     skip:
   end if
 end macro
+
+end if
