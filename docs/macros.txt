@@ -53,14 +53,18 @@ Arithmetic Macros
 
 Jump Macros
 -----------
-all jump macros respect the result of CMP. immediate jump macros require that
-the target location is within the program, in case of relocation.
+all jump macros respect the result of CMP. all immediate jump macros except for
+JABSI require that the target location is within the program, in case of relocation.
 
   ; set PC to src
   JMP src
 
-  ; set PC to imm
+  ; set PC to imm, respecting relocation
+  ; not for use on addresses from outside the program
   JMPI imm
+
+  ; set PC to imm, does not respect relocation
+  JABSI imm
 
   ; jump to src2 if dest and src1 are equal
   JEQ dest, src1, src2
