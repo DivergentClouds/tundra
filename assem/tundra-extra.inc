@@ -154,10 +154,15 @@ macro jmp? src
   mov pc, src
 end macro
 
-; jump immediate
+; jump immediate, relative to the current position
 macro jmpi? imm
   ; subtract 2 because pc is incremented by 2 when the immediate is read
   addi pc, imm - $ - 2
+end macro
+
+; jump immediate, absolute location
+macro jabsi? imm
+  movi pc, imm
 end macro
 
 ; clear cmp flag, making jumps until the next `cmp` unconditional
