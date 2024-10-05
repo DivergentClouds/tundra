@@ -475,17 +475,6 @@ macro jgtui? dest, imm1, imm2
   end if
 end macro
 
-; jump to src if dest == 0
-macro jeqz? dest, src
-  internal_assert_not_reg dest, pc
-  internal_assert_not_reg src, *pc
-
-  addi dest, 0x8000    ; smallest signed 16 bit value
-  cmpi dest, 0x8000
-
-  jmp src2
-end macro
-
 ; must be called before other stack macros
 ; reserves C for use as the stack pointer
 macro stack_init?
