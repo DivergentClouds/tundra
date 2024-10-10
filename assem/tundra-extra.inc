@@ -176,7 +176,7 @@ macro movreli? dest, imm
   ; mmio addresses are never relocated
   assert imm >= 0 & imm < mmio
   
-  ; not equivelant to $ in case of code relocation
+  ; not equivalent to $ in case of code relocation
   mov dest, pc
 
   ; add 2 because 2 instructions in macro
