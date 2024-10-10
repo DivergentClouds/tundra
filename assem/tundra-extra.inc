@@ -60,6 +60,15 @@ macro internal_assert_not_reg? reg1, reg2
   assert `reg1 <> `reg2
 end macro
 
+macro internal_construct_bits? name, count
+  name = 0
+
+  repeat count
+    name = name shl 1
+    name = name or 1
+  end repeat 
+end macro
+
 macro halt?
   movi a, mmio.halt
   sto a, a
@@ -89,7 +98,7 @@ end macro
 macro rotri dest, imm
   internal_assert_not_reg dest, pc
 
-  assert imm >= 0 & imm < 0x8000
+  assert imm > 0 & imm < 16
 
   roti dest, imm
 end macro
@@ -97,9 +106,36 @@ end macro
 macro rotli dest, imm
   internal_assert_not_reg dest, pc
 
-  assert imm >= 0 & imm < 0x8000
+  assert imm > 0 & imm < 16
 
   roti dest, 0 - imm
+end macro
+
+macro shri dest, imm
+  internal_assert_not_reg dest, pc
+
+  assert imm > 0 & imm < 16
+
+  local mask
+  internal_construct_bits mask, imm
+  mask = mask shl 16 - imm
+  mask = not mask
+
+  rotri dest, imm
+  andi dest, mask
+end macro
+
+macro shli dest, imm
+  internal_assert_not_reg dest, pc
+
+  assert imm > 0 & imm < 16
+
+  local mask
+  internal_construct_bits mask, imm
+  mask = not mask
+
+  rotli dest, imm
+  andi dest, mask
 end macro
 
 macro neg? dest
