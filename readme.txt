@@ -9,10 +9,13 @@ byte by default. For more details, see the docs directory.
 Emulator
 ========
 
+Assembled Tundra programs may be run with the Tundra emulator.
+
 Compiling
 ---------
-Tundra may be compiled via the zig master branch.
+The Tundra emulator may be compiled with the Zig master branch.
 
+  cd emu
   zig build -Doptimize=ReleaseSafe
 
 Usage
