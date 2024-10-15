@@ -289,7 +289,10 @@ end macro
 macro jnei? dest, imm1, imm2
   internal_assert_not_reg dest, pc
 
-  xori dest, imm1
+  if imm1 <> 0
+    xori dest, imm1
+  end if
+
   addi dest, 0x7fff     ; 0 becomes largest signed 16 bit value
   cmpi dest, 0x7ffe     ; don't jump if larger aka if dest == src1
 
@@ -665,18 +668,21 @@ macro ceqri? dest, src, imm
   internal_assert_not_reg src, *pc
   internal_assert_not_reg dest, pc
 
-  xori dest, imm1
+  xor dest, src
   addi dest, 0x8000    ; smallest signed 16 bit value
   cmpi dest, 0x8000
   
-  calli imm2
+  calli imm
 end macro
 
 ; call if equal, immediate
 macro ceqi? dest, imm1, imm2
   internal_assert_not_reg dest, pc
 
-  xori dest, imm1
+  if imm1 <> 0
+    xori dest, imm1 
+  end if
+
   addi dest, 0x8000    ; smallest signed 16 bit value
   cmpi dest, 0x8000
   
@@ -696,7 +702,10 @@ end macro
 macro ceqpi? dest, imm1, imm2
   internal_assert_not_reg dest, pc
 
-  xori dest, imm1
+  if imm1 <> 0
+    xori dest, imm1 
+  end if
+
   cmpi dest, 0
 
   calli imm2
@@ -705,7 +714,10 @@ end macro
 macro cnei? dest, imm1, imm2
   internal_assert_not_reg dest, pc
 
-  xori dest, imm1
+  if imm1 <> 0
+    xori dest, imm1 
+  end if
+
   addi dest, 0x7fff
   cmpi dest, 0x7ffe
 
