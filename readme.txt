@@ -46,7 +46,7 @@ The Tundra disassembler may be compiled with the Zig master branch.
 
 Usage
 -----
-  usage: disassem <memory_file> [[--data <range>]...]
+  usage: tundis <memory_file> [[--data <range>]...]
 
 Usage Notes
 -----------
