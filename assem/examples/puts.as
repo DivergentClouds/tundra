@@ -10,7 +10,7 @@ main:
   pushi data.hello
   calli puts
 
-  reti b, 0
+  reti 0
 
 
 ; puts(str: [*:0]u8) void
@@ -34,7 +34,7 @@ puts:
     jmpi .loop
 
   .end:
-  reti b, 2
+  reti 2
 
 data:
 .hello:
