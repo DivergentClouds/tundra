@@ -69,11 +69,6 @@ macro internal_construct_bits? name, count
   end repeat 
 end macro
 
-macro halt?
-  movi a, mmio.halt
-  sto a, a
-end macro
-
 macro not? dest
   internal_assert_not_reg dest, pc
 

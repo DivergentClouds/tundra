@@ -3,7 +3,9 @@ include '../tundra-extra.inc'
 _start:
   stack_init
   calli main
-  halt
+
+  movi a, mmio.halt
+  sto a, a
 
 ; main() void
 main:
