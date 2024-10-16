@@ -64,7 +64,8 @@ Arithmetic Macros
 Jump Macros
 -----------
 all jump macros respect the result of CMP. all immediate jump macros except for
-JABSI require that the target location is within the program, in case of relocation.
+JABSI require that the target location is within the program, in case of
+relocation.
 
   ; set PC to src
   JMP src
@@ -186,9 +187,9 @@ STACK_INIT must be called before any stack or function macros.
 
 Function Macros
 ---------------
-all function macros respect the result of CMP. STACK_INIT must be called
-before any stack or function macros. CRELI is the only calling function macro
-that respects relocation.
+STACK_INIT must be called before any stack or function macros. CRELI is the
+only calling function macro that respects relocation. all function macros
+assert that PC is mutable.
 
   ; call src
   CALL src

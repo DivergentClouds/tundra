@@ -650,8 +650,6 @@ macro call? src
 
   pushi ret_addr
   jmp src
-  dropi 2               ; if cmp caused jump to be skipped, drop return address
-  ret_addr:
 end macro
 
 macro calli? imm
@@ -659,80 +657,7 @@ macro calli? imm
 
   pushi ret_addr
   jmpi imm
-  dropi 2               ; if cmp caused jump to be skipped, drop return address
   ret_addr:
-end macro
-
-; call if equal, register, immediate
-macro ceqri? dest, src, imm
-  internal_assert_not_reg src, *pc
-  internal_assert_not_reg dest, pc
-
-  xor dest, src
-  addi dest, 0x8000    ; smallest signed 16 bit value
-  cmpi dest, 0x8000
-  
-  calli imm
-end macro
-
-; call if equal, immediate
-macro ceqi? dest, imm1, imm2
-  internal_assert_not_reg dest, pc
-
-  if imm1 <> 0
-    xori dest, imm1 
-  end if
-
-  addi dest, 0x8000    ; smallest signed 16 bit value
-  cmpi dest, 0x8000
-  
-  calli imm2
-end macro
-
-macro ceqpri? dest, src, imm
-  internal_assert_not_reg src, *pc
-  internal_assert_not_reg dest, pc
-
-  xor dest, src
-  cmpi dest, 0
-
-  calli imm
-end macro
-
-macro ceqpi? dest, imm1, imm2
-  internal_assert_not_reg dest, pc
-
-  if imm1 <> 0
-    xori dest, imm1 
-  end if
-
-  cmpi dest, 0
-
-  calli imm2
-end macro
-
-macro cnei? dest, imm1, imm2
-  internal_assert_not_reg dest, pc
-
-  if imm1 <> 0
-    xori dest, imm1 
-  end if
-
-  addi dest, 0x7fff
-  cmpi dest, 0x7ffe
-
-  calli imm2
-end macro
-
-macro cneri? dest, src, imm
-  internal_assert_not_reg src, *pc
-  internal_assert_not_reg dest, pc
-
-  xor dest, src
-  addi dest, 0x7fff
-  cmpi dest, 0x7ffe
-
-  calli imm
 end macro
 
 ; calli, but for relocatable code
@@ -743,7 +668,6 @@ macro creli? imm
   movreli b, ret_addr
   push b
   jmpi imm
-  dropi 2               ; if cmp caused jump to be skipped, drop return address
   ret_addr:
 end macro
 
@@ -751,42 +675,23 @@ end macro
 ; overwrites b register
 macro ret? src
   internal_assert_not_reg src, *pc
-  internal_assert_not_reg dest, pc
   internal_assert_not_reg src b
   internal_assert_not_reg src *b
-
-  local skip, continue
-
-  jmpi continue
-  jmpi skip
-  continue:
 
   pop b
   drop src
   jmp b
-
-  skip:
 end macro
 
 ; return from current function, dropping imm bytes of arguments from the stack
 ; overwrites b register
 macro reti? imm
-  internal_assert_not_reg dest, pc
-
   if imm = 0
     popj
   else
-    local skip, continue
-
-    jmpi continue
-    jmpi skip
-    continue:
-
     pop b
     dropi imm
     jmp b
-
-    skip:
   end if
 end macro
 
