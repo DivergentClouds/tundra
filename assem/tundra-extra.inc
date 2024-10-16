@@ -736,19 +736,24 @@ macro cneri? dest, src, imm
 end macro
 
 ; calli, but for relocatable code
-macro creli? dest, imm
+; overwrites b register
+macro creli? imm
   local ret_addr
 
-  movreli dest, ret_addr
-  push dest
+  movreli b, ret_addr
+  push b
   jmpi imm
   dropi 2               ; if cmp caused jump to be skipped, drop return address
   ret_addr:
 end macro
 
-macro ret? dest, src
+; return from current function, dropping src bytes of arguments from the stack
+; overwrites b register
+macro ret? src
   internal_assert_not_reg src, *pc
   internal_assert_not_reg dest, pc
+  internal_assert_not_reg src b
+  internal_assert_not_reg src *b
 
   local skip, continue
 
@@ -756,14 +761,16 @@ macro ret? dest, src
   jmpi skip
   continue:
 
-  pop dest
+  pop b
   drop src
-  jmp dest
+  jmp b
 
   skip:
 end macro
 
-macro reti? dest, imm
+; return from current function, dropping imm bytes of arguments from the stack
+; overwrites b register
+macro reti? imm
   internal_assert_not_reg dest, pc
 
   if imm = 0
@@ -775,9 +782,9 @@ macro reti? dest, imm
     jmpi skip
     continue:
 
-    pop dest
+    pop b
     dropi imm
-    jmp dest
+    jmp b
 
     skip:
   end if

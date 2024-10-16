@@ -217,15 +217,18 @@ that respects relocation.
   CEQPI dest, imm1, imm2
 
   ; call imm, respecting relocation
-  CRELI dest, imm
+  ; overwrites the b register
+  CRELI imm
 
   ; pop a word of the stack into PC
   POPJ
 
   ; return from the current function, dropping src bytes from the stack
+  ; overwrites the b register
   RET dest, src
 
   ; return from the current function, dropping imm bytes from the stack
+  ; overwrites the b register
   RETI dest, imm
 
 Other Macros
