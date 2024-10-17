@@ -50,8 +50,15 @@ const Range = struct {
 
     fn inside(range: Range, address: u16) bool {
         if (address >= range.start and address <= range.end)
-            return true;
-        return false;
+            return true
+        else
+            return false;
+    }
+    fn remaining(range: Range, address: u16) ?u16 {
+        if (range.inside(address))
+            return range.end - address
+        else
+            return null;
     }
 
     fn parseString(string: []const u8) !Range {
@@ -66,7 +73,7 @@ const Range = struct {
         const start = try std.fmt.parseInt(u16, string[0..dash_index], 16);
         const end = try std.fmt.parseInt(u16, string[dash_index + 1 ..], 16);
 
-        if (start >= end)
+        if (start > end)
             return error.BadRangeOrder;
 
         return .{
@@ -84,25 +91,32 @@ fn disassemble(
     const memory_reader = memory_file.reader();
     const stdout = std.io.getStdOut().writer();
 
-    var in_data: bool = false;
+    var remaining_data_after: ?u16 = null;
     var address: u16 = 0;
     while (address < try memory_file.getEndPos()) {
         for (data_ranges) |range| {
-            if (range.inside(address)) {
-                in_data = true;
+            if (range.remaining(address)) |remaining| {
+                remaining_data_after = remaining;
                 break;
             }
         } else {
-            in_data = false;
+            remaining_data_after = null;
         }
 
-        if (in_data) {
-            // TODO: print multiple words per line?
-            try stdout.print("{x:0>4}: {x:0>4}\n", .{
-                address,
-                try memory_reader.readInt(u16, .little),
-            });
-            address += 2;
+        if (remaining_data_after) |remaining| {
+            if (remaining == 0 or address +| 1 == try memory_file.getEndPos()) {
+                try stdout.print("{x:0>4}: {x:0>2}\n", .{
+                    address,
+                    try memory_reader.readInt(u8, .little),
+                });
+                address += 1;
+            } else {
+                try stdout.print("{x:0>4}: {x:0>4}\n", .{
+                    address,
+                    try memory_reader.readInt(u16, .little),
+                });
+                address += 2;
+            }
         } else {
             const instruction = try readInstruction(memory_file, &address, allocator);
             defer allocator.free(instruction);
