@@ -51,7 +51,8 @@ Usage
 Usage Notes
 -----------
 - the '--data' option is used to mark a region of the file as data and not code
-- ranges are of the form '<start>-<end>' (inclusive), where start is less than end
+- ranges are of the form '<start>-<end>' (inclusive), where start is less than
+  or equal to end
 - start and end must both be up to 4 digits of hexadecimal
 
 License
