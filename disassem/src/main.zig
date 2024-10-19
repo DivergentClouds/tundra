@@ -1,6 +1,8 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
+const max_filesize = 0xfff0;
+
 pub fn main() !void {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .init;
     defer std.debug.assert(gpa.deinit() == .ok);
@@ -41,6 +43,10 @@ pub fn main() !void {
     }
 
     const memory_file = try std.fs.cwd().openFile(filename.?, .{});
+
+    if (try memory_file.getEndPos() > max_filesize)
+        return error.ProgramTooLarge;
+
     try disassemble(memory_file, ranges.items, allocator);
 }
 
