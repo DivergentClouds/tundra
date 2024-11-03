@@ -151,7 +151,7 @@ const Register = enum(u2) {
 };
 
 // packed structs are ordered with least significant fields on top
-const Instruction = packed struct {
+const Instruction = packed struct(u8) {
     reg_dest: Register,
     deref_r: bool,
     reg_src: Register,
