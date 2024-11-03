@@ -150,19 +150,12 @@ const Register = enum(u2) {
     pc,
 };
 
-const Instruction = switch (builtin.cpu.arch.endian()) {
-    .little => packed struct {
-        reg_dest: Register,
-        deref_r: bool,
-        reg_src: Register,
-        opcode: Opcode,
-    },
-    .big => packed struct {
-        opcode: Opcode,
-        reg_src: Register,
-        deref_r: bool,
-        reg_dest: Register,
-    },
+// packed structs are ordered with least significant fields on top
+const Instruction = packed struct {
+    reg_dest: Register,
+    deref_r: bool,
+    reg_src: Register,
+    opcode: Opcode,
 };
 
 /// returned string does not have newline
