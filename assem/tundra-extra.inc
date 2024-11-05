@@ -144,9 +144,9 @@ macro sub? dest, src
   internal_assert_not_reg src, *pc
   internal_assert_not_reg dest, pc
 
-  neg dest
+  not dest
   add dest, src
-  neg dest
+  not dest
 end macro
 
 macro subi? dest, imm
