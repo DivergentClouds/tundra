@@ -369,6 +369,35 @@ macro jlequ? dest, src1, src2
   skip3:
 end macro
 
+; jump to src if dest <= imm (unsigned)
+macro jlequir? dest, imm, src
+  internal_assert_not_reg dest, pc
+  internal_assert_not_reg src, *pc
+
+  local skip1, skip2, skip3
+
+  ; NOTE: `a <=u b` should be `a <=s b and (a >=s 0 or b <s 0)`
+
+  ; a <=s b?
+  cmpi dest, imm
+  jmpi skip1
+  jmpi skip3
+
+  ; a >=s 0?
+  skip1:
+  cmpi dest, -1
+  jmpi skip2
+  jmp src
+
+  skip2:
+  ; b <s 0?
+  if imm1 < 0 | imm1 > 0x7fff
+    jmp src
+  end if
+
+  skip3:
+end macro
+
 ; jump to imm if dest <= src (unsigned)
 macro jlequri? dest, src, imm
   internal_assert_not_reg src, *pc
@@ -506,6 +535,29 @@ macro jgtui? dest, imm1, imm2
     ; a <s 0?
     cmpi dest, -1
     jmpi imm2
+  end if
+end macro
+
+; jump to src if dest > imm (unsigned)
+macro jgtuir? dest, imm, src
+  internal_assert_not_reg dest, pc
+  internal_assert_not_reg src, *pc
+
+  local skip1
+
+  ; NOTE: `a >u b` should be `a >s b or (a <s 0 and b >=s 0)`
+
+  ; a >s b?
+  cmpi dest, imm
+  jmpi skip1
+  jmp src
+
+  ; b >=s 0?
+  skip1:
+  if imm >= 0
+    ; a <s 0?
+    cmpi dest, -1
+    jmp src
   end if
 end macro
 
