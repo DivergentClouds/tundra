@@ -112,6 +112,9 @@ relocation.
   ; jump to src2 if dest <= src1 (unsigned)
   JLEQU dest, src1, src2
 
+  ; jump to src if dest <= imm (unsigned)
+  JLEQUIR dest, imm, src
+
   ; jump to imm if dest <= src (unsigned)
   JLEQURI dest, src, imm
 
@@ -120,6 +123,9 @@ relocation.
 
   ; jump to src2 if dest > src1 (unsigned)
   JGTU dest, src1, src2
+
+  ; jump to src if dest > imm (unsigned)
+  JGTUIR dest, imm, src
 
   ; jump to imm if dest > src (unsigned)
   JGTURI dest, src, imm
