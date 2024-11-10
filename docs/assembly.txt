@@ -65,7 +65,7 @@ Notes
 
 Assembling
 ----------
-to assemble a Tundra program, use fasmg (https://flatassembler.net/) and
+To assemble a Tundra program, use fasmg (https://flatassembler.net/) and
 include either 'tundra-core.inc' or 'tundra-extra.inc' (which includes
 tundra-core) at the top of your file. instructions, constants, and macros are
 not case-sensitive. semicolons start line comments.
