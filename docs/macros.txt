@@ -16,11 +16,6 @@ that may not be dereferenced, and 'imm' marks a 16-bit immediate. note that
 'src' may not be '*pc' and 'dest' may not be 'pc'. registers marked 'dest' may
 be modified by the macro.
 
-MMIO Macros
------------
-  ; halts execution
-  HALT
-
 Bitwise Macros
 --------------
   ; set dest to ~dest
