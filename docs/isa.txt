@@ -8,7 +8,7 @@ ISA
 
 Overview
 --------
-This file specifies the binary format of the Tundra instruction set. for a more
+This file specifies the binary format of the Tundra instruction set. For a more
 general overview, see assembly.txt.
 
 Binary Format

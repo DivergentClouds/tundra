@@ -19,7 +19,7 @@ B
 C
 PC
 
-Dereferenced registers
+Dereferenced Registers
 ----------------------
 *A
 *B
@@ -53,7 +53,7 @@ Instructions
 
 Memory Access
 -------------
-- the addressing space is 0x10000 bytes long
+- the address space is 0x10000 bytes long
 - data is 16-bit little endian
 - dereferencing R will load memory[R] and memory[R + 1]
 - dereferencing PC will increment it by 2 after fetch but before execution
@@ -73,7 +73,7 @@ not case-sensitive. semicolons start line comments.
 Tundra-Core
 -----------
 tundra-core.inc includes the instruction set along with macros that treat R as
-an immediate. To use them, suffix an instruction name with 'I'. as an example:
+an immediate. To use them, suffix an instruction name with 'I'. For example,
 
   MOVI A, -1
 

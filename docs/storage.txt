@@ -1,0 +1,13 @@
+==========
+= Tundra =
+==========
+
+
+Storage
+=======
+
+// TODO:
+//  - any attempts to read/write memory in and above the mmio range via storage
+//    access results in undefined behavior.
+//  - block size is 2048 bytes
+//  - at most 4 storage devices may be attached

@@ -1,0 +1,38 @@
+==========
+= Tundra =
+==========
+
+
+Interrupts
+==========
+
+Enabling Interrupts
+-------------------
+
+// TODO:
+//  - bitfield
+//  - disabled in region 4
+
+
+Interrupt Kinds
+---------------
+
+|======|===================|===================================================|
+| id   | name              | trigger                                           |
+|======|===================|===================================================|
+| 0x01 | read protection   | trigger interrupt when code in memory regions 0-3 |
+|      |                   | attempts to read from memory region 4             |
+|------|-------------------|---------------------------------------------------|
+| 0x02 | write protection  | trigger interrupt when code in memory regions 0-3 |
+|      |                   | attempts to write to memory region 4              |
+|------|-------------------|---------------------------------------------------|
+| 0x04 | execution         | trigger interrupt when code in memory regions 0-3 |
+|      | protection        | attempts to execute code in memory region 4       |
+|------|-------------------|---------------------------------------------------|
+| 0x08 | timer             | trigger interrupt when the internal cpu cycle     |
+|      |                   | counter overflows (roughly 19 times per second)   |
+|------|-------------------|---------------------------------------------------|
+| 0x10 | keyboard          | trigger interrupt when a key on the keyboard is   |
+|      |                   | pressed                                           |
+|------|-------------------|---------------------------------------------------|
+

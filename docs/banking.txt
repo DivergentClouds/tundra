@@ -1,0 +1,75 @@
+==========
+= Tundra =
+==========
+
+
+Memory Banking
+==============
+
+Regions
+-------
+Memory is divided into 5 regions of 12 KiB. Regions 0-3 are remappable to other
+banks. Region 4 is intended for holding the kernel, and may be protected from
+external access. For more details on memory protection, see interrupts.txt.
+
+Each region is remapped individually.
+
+|========|========|========|================|
+| region | start  | end    | notes          |
+|========|========|========|================|
+| 0      | 0x0000 | 0x2fff |                |
+|--------|--------|--------|----------------|
+| 1      | 0x3000 | 0x5fff |                |
+|--------|--------|--------|----------------|
+| 2      | 0x6000 | 0x8fff |                |
+|--------|--------|--------|----------------|
+| 3      | 0x9000 | 0xbfff |                |
+|--------|--------|--------|----------------|
+| 4      | 0xc000 | 0xffff | not remappable |
+|--------|--------|--------|----------------|
+
+Bank 0
+------
+|========|=================|
+| region | purpose         |
+|========|=================|
+| 0      | ROM             |
+|--------|-----------------|
+| 1      | general purpose |
+|--------|-----------------|
+| 2      | general purpose |
+|--------|-----------------|
+| 3      | general purpose |
+|--------|-----------------|
+
+Banks 1-14
+----------
+|========|=================|
+| region | purpose         |
+|========|=================|
+| 0      | general purpose |
+|--------|-----------------|
+| 1      | general purpose |
+|--------|-----------------|
+| 2      | general purpose |
+|--------|-----------------|
+| 3      | general purpose |
+|--------|-----------------|
+
+Bank 15
+-------
+Bank 15 is reserved for potential future I/O devices.
+
+|========|=================|
+| region | purpose         |
+|========|=================|
+| 0      | reserved        |
+|--------|-----------------|
+| 1      | reserved        |
+|--------|-----------------|
+| 2      | reserved        |
+|--------|-----------------|
+| 3      | reserved        |
+|--------|-----------------|
+
+
