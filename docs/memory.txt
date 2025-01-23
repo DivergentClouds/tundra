@@ -36,18 +36,18 @@ more information.
 | 0xfff0  | write      | write the least significant byte  |
 |         |            | to the terminal                   |
 |---------|------------|-----------------------------------|
+| 0xfff1  | read       | read the maximum block index that |
+|         |            | is accessible in storage          |
+|---------|------------|-----------------------------------|
 | 0xfff1  | write      | seek to the given block index in  |
 |         |            | storage                           |
 |---------|------------|-----------------------------------|
-| 0xfff1  | read       | read the maximum block index that |
-|         |            | is accessible in storage          |
+| 0xfff2  | read       | if storage is mid-operation, then | 
+|         |            | read 0, otherwise read 1          |
 |---------|------------|-----------------------------------|
 | 0xfff2  | write      | write a block from memory         |
 |         |            | starting at the given address     |
 |         |            | into storage                      |
-|---------|------------|-----------------------------------|
-| 0xfff2  | read       | if storage is mid-operation, then | 
-|         |            | read 0, otherwise read 1          |
 |---------|------------|-----------------------------------|
 | 0xfff3  | write      | read a block from storage into    |
 |         |            | memory starting at the given      |

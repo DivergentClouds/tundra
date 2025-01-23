@@ -14,6 +14,8 @@ external access. For more details on memory protection, see interrupts.txt.
 
 Each region is remapped individually.
 
+// TODO: detail how to remap
+
 |========|========|========|================|
 | region | start  | end    | notes          |
 |========|========|========|================|

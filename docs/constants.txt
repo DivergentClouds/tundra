@@ -13,7 +13,7 @@ for information on macros defined tundra-extra.inc, see macros.txt.
 
 Stack Constants
 ---------------
-  STACK_BASE = 0xFFEF
+  STACK_BASE = 0xBFFF
 
   ; the following is only defined once STACK_INIT is run
   SP = C
@@ -22,29 +22,62 @@ MMIO Addresses
 --------------
   MMIO = 0xFFF0
 
-  MMIO.READ_CHAR = 0xFFF0
+  ; read
+  MMIO.READ_TERM = 0xFFF0
 
-  MMIO.WRITE_CHAR = 0xFFF1
+  ; write
+  MMIO.WRITE_TERM = 0xFFF0
 
-  MMIO.BLOCK_INDEX = 0xFFF2
+  ; read
+  MMIO.STORAGE_SIZE = 0xFFF1
 
-  MMIO.WRITE_STORAGE = 0xFFF3
+  ; write
+  MMIO.SEEK_STORAGE = 0xFFF1
 
-  MMIO.READ_STORAGE = 0xFFF4
+  ;read
+  MMIO.STORAGE_READY = 0xFFF2
 
-  MMIO.STORAGE_COUNT = 0xFFF5
+  ; write
+  MMIO.WRITE_BLOCK = 0xFFF2
 
-  MMIO.STORAGE_INDEX = 0xFFF6
+  ; write
+  MMIO.READ_BLOCK = 0xFFF3
 
-  MMIO.ZERO_STORAGE = 0xFFF7
+  ; read
+  MMIO.STORAGE_COUNT = 0xFFF4
 
-  MMIO.BOUNDARY_ADDRESS = 0xFFF8
+  ; write
+  MMIO.STORAGE_INDEX = 0xFFF4
 
-  MMIO.INTERRUPT_ADDRESS = 0xFFF9
+  ; read/write
+  MMIO.INT_HANDLER = 0xFFF5
 
-  MMIO.PREVIOUS_INTERRUPT = 0xFFFA
+  ; read
+  MMIO.INT_FROM = 0xFFF6
 
+  ; read
+  MMIO.INT_KIND = 0xFFF7
+
+  ; read/write
+  MMIO.INT_ENABLED = 0xFFF8
+
+  ; read/write
+  MMIO.BANK_MAP = 0xFFF9
+
+  ; write
   MMIO.HALT = 0xFFFF
+
+Interrupt Kinds
+---------------
+  INT.READ_PROTECT = 0x01
+
+  INT.WRITE_PROTECT = 0x02
+
+  INT.EXEC_PROTECT = 0x04
+
+  INT.TIMER = 0x08
+
+  INT.KEYBOARD = 0x10
 
 Terminal Input/Output Values
 ----------------------------
