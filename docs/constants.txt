@@ -59,7 +59,7 @@ MMIO Addresses
   MMIO.INT_KIND = 0xFFF7
 
   ; read/write
-  MMIO.INT_ENABLED = 0xFFF8
+  MMIO.ENABLED_INTS = 0xFFF8
 
   ; read/write
   MMIO.BANK_MAP = 0xFFF9
