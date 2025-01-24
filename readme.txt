@@ -30,7 +30,7 @@ Assembler
 =========
 
 Tundra assembly files may be assembled with fasmg (https://flatassembler.net/).
-see docs/assembly.txt for more information.
+See docs/assembly.txt for more information.
 
 Disassembler
 ============
