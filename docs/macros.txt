@@ -9,12 +9,14 @@ Macros
 Overview
 --------
 tundra-extra.inc includes tundra-core.inc along with some macros and constants.
-for information on constants defined in tundra-extra.inc, see constants.txt.
-the signature of a macro contains additional information on what may be passed
+For information on constants defined in tundra-extra.inc, see constants.txt.
+
+The signature of a macro contains additional information on what may be passed
 to it. 'src' marks a register that may be dereferenced, 'dest' marks a register
-that may not be dereferenced, and 'imm' marks a 16-bit immediate. Note that
-'src' may not be '*pc' and 'dest' may not be 'pc'. Registers marked 'dest' may
-be modified by the macro.
+that may not be dereferenced, and 'imm' marks a 16-bit immediate.
+
+Note that registers marked 'dest' may be modified by the macro. In additon, PC
+may not be passed to 'dest' and '*PC' may not be passed to src.
 
 Bitwise Macros
 --------------

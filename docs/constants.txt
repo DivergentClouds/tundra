@@ -9,7 +9,7 @@ Constants
 Overview
 --------
 tundra-extra.inc includes tundra-core.inc along with some macros and constants.
-for information on macros defined tundra-extra.inc, see macros.txt.
+For information on macros defined tundra-extra.inc, see macros.txt.
 
 Stack Constants
 ---------------
