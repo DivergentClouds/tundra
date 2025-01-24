@@ -10,7 +10,15 @@ Instruction Format
 ------------------
 Instructions are composed of an opcode and 2 registers, the second of which may
 be dereferenced. There are 4 16-bit registers, the first 3 of which are general
-purpose. To dereference a register, prefix it with an asterisk.
+purpose. To dereference a register, prefix it with an asterisk. Dereferencing a
+register will read the little-endian value from memory at the address contained
+in the register. Dereferencing the program counter will read the value after the
+current instruction
+
+Dereferencing a register will read the little-endian 16-bit value from memory at
+the address contained in the register. Dereferencing the program counter will
+read the 16-bit value in memory after the current instruction and then skip past
+it. For details, see cpu.txt.
 
 Registers
 ---------
@@ -51,18 +59,6 @@ Instructions
 | XOR dest, src | set dest to dest ^ src                       |
 |---------------|----------------------------------------------|
 
-Memory Access
--------------
-- the address space is 0x10000 bytes long
-- data is 16-bit little endian
-- dereferencing R will load memory[R] and memory[R + 1]
-- dereferencing PC will increment it by 2 after fetch but before execution
-
-Notes
------
-- PC is incremented by 1 after an instruction is fetched
-- PC is mutable by default
-
 Assembling
 ----------
 To assemble a Tundra program, use fasmg (https://flatassembler.net/) and
@@ -72,7 +68,7 @@ not case-sensitive. semicolons start line comments.
 
 Tundra-Core
 -----------
-tundra-core.inc includes the instruction set along with macros that treat R as
+tundra-core.inc includes the instruction set along with macros that treat src as
 an immediate. To use them, suffix an instruction name with 'I'. For example,
 
   MOVI A, -1
