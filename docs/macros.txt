@@ -15,7 +15,7 @@ The signature of a macro contains additional information on what may be passed
 to it. 'src' marks a register that may be dereferenced, 'dest' marks a register
 that may not be dereferenced, and 'imm' marks a 16-bit immediate.
 
-Note that registers marked 'dest' may be modified by the macro. In additon, PC
+Note that registers marked 'dest' may be modified by the macro. In addition, PC
 may not be passed to 'dest' and '*PC' may not be passed to src.
 
 Bitwise Macros
