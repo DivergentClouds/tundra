@@ -29,9 +29,8 @@ more information.
 | Address | Read/Write | Effect                            |
 |=========|============|===================================|
 | 0xfff0  | read       | if terminal input is available,   |
-|         |            | then read a character into the    |
-|         |            | least significant byte, otherwise |
-|         |            | read -1                           |
+|         |            | then read a byte from the         |
+|         |            | terminal, otherwise read -1       |
 |---------|------------|-----------------------------------|
 | 0xfff0  | write      | write the least significant byte  |
 |         |            | to the terminal                   |

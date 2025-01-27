@@ -14,8 +14,6 @@ external access. For more details on memory protection, see interrupts.txt.
 
 Each region is remapped individually.
 
-// TODO: detail how to remap
-
 |========|========|========|================|
 | region | start  | end    | notes          |
 |========|========|========|================|
@@ -29,6 +27,13 @@ Each region is remapped individually.
 |--------|--------|--------|----------------|
 | 4      | 0xc000 | 0xffff | not remappable |
 |--------|--------|--------|----------------|
+
+Remapping
+---------
+MMIO.BANK_MAP holds a bitfield specifying the bank mapped to each region. The
+bitfield contains 4 bits per region. The bitfield is ordered such that region 0
+is controlled by the least significant bits and region 3 is controlled by the
+most significant bits.
 
 Bank 0
 ------
