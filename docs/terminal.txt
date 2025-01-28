@@ -6,9 +6,11 @@
 Terminal
 ========
 
-// TODO:
-//  - terminal i/o can use specific bytes to convey additional information
-//  - character constants in constants.txt
+Overview
+--------
+Terminal I/O uses the ASCII character set. Some bytes above 0x7F allow for
+manipulation of the terminal. Non-character keys on the keyboard are represented
+by bytes above 0x7F. Constants for terminal I/O are found in constants.txt.
 
 Terminal Input
 --------------
