@@ -6,8 +6,30 @@
 Storage
 =======
 
-// TODO:
-//  - any attempts to read/write memory in and above the mmio range via storage
-//    access results in undefined behavior.
-//  - block size is 2048 bytes
-//  - at most 4 storage devices may be attached
+Overview
+--------
+Storage I/O is done in blocks of 2048 bytes. A storage device may contain up to
+2^16 blocks. To get the number of blocks in a storage device, read from
+MMIO.STORAGE_MAX.
+
+Storage Access
+--------------
+To seek to a block in a storage device, use MMIO.SEEK_STORAGE. To load a block
+from storage write to MMIO.LOAD_BLOCK with the memory address to write the data
+from storage. To store a block in storage, write to MMIO.STORE_BLOCK with the
+memory address of the data to write. Attempting to load or store a block above
+memory address 0xf7f0 leads to undefined behavior, as the block would intersect
+with the MMIO range.
+
+Access Delay
+------------
+Storage access takes time, to check if the operation has completed, read 
+MMIO.STORAGE_READY. Accessing storage mid-operation results in undefined
+behavior.
+
+Device Selection
+----------------
+Up to 4 storage devices may be attached, which may be selected from by writing
+to MMIO.STORAGE_INDEX. By default, MMIO.STORAGE_INDEX is set to 0. To get the 
+number of connected storage devices, read from MMIO.STORAGE_COUNT.  Attempting
+to access a storage device that is not connected results in undefined behavior.
