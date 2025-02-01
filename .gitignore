@@ -4,3 +4,5 @@
 test-progs
 assem/examples/assembled
 assem/wip
+cspell.json
+assem/teaching
