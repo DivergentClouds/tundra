@@ -24,10 +24,11 @@ Interrupt Kinds
 |      |                   | attempts to write to memory region 4              |
 |------|-------------------|---------------------------------------------------|
 | 0x04 | execution         | trigger interrupt when code in memory regions 0-3 |
-|      | protection        | attempts to execute code in memory region 4       |
+|      | protection        | attempts to set the program counter to an address |
+|      |                   | in memory region 4                                |
 |------|-------------------|---------------------------------------------------|
 | 0x08 | timer             | trigger interrupt when the internal cpu cycle     |
-|      |                   | counter overflows (roughly 19 times per second)   |
+|      |                   | counter overflows (roughly 76 times per second)   |
 |------|-------------------|---------------------------------------------------|
 | 0x10 | keyboard          | trigger interrupt when a key on the keyboard is   |
 |      |                   | pressed                                           |
