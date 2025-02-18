@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) void {
     // This creates another `std.Build.Step.Compile`, but this one builds an executable
     // rather than a static library.
     const exe = b.addExecutable(.{
-        .name = "emu",
+        .name = "tundra",
         .root_module = exe_mod,
     });
 

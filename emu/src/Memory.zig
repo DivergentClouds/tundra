@@ -1,7 +1,8 @@
 const std = @import("std");
-const Cpu = @import("Cpu.zig");
-
+const Io = @import("Io.zig");
 const Memory = @This();
+
+const block_size = @import("Storage.zig").block_size;
 
 /// reserved space at the top of memory for mmio
 const mmio_size = 0x10;
@@ -53,22 +54,28 @@ const Bank = struct {
     }
 };
 
-/// remember to @byteSwap when bitcasting to u16 on big endian
+/// TODO: check if this needs reordering for bitcasts
 const RegionBitmap = packed struct(u16) {
-    region3: u4,
-    region2: u4,
-    region1: u4,
     region0: u4,
+    region1: u4,
+    region2: u4,
+    region3: u4,
 };
 
-pub const Error = error{
-    OutOfRange,
-    WriteInRom,
-};
+pub fn mapRegions(memory: *Memory, bitmap: u16) void {
+    const region_bitmap: RegionBitmap = @bitCast(bitmap);
+
+    memory.region_bitmap = region_bitmap;
+
+    memory.active_regions[0] = memory.banks[region_bitmap.region0][0];
+    memory.active_regions[1] = memory.banks[region_bitmap.region1][1];
+    memory.active_regions[2] = memory.banks[region_bitmap.region2][2];
+    memory.active_regions[3] = memory.banks[region_bitmap.region3][3];
+}
 
 pub fn init(
     allocator: std.mem.Allocator,
-) std.mem.Allocator.Error!Memory {
+) !Memory {
     const banks = try allocator.alloc(Bank, bank_count);
     errdefer allocator.free(banks);
 
@@ -114,8 +121,8 @@ pub fn deinit(memory: Memory) void {
 pub fn readWord(
     memory: Memory,
     address: u16,
-) Error!u16 {
-    // TODO: handle mmio addresses
+) !u16 {
+    if (address >= io_boundary) {}
 
     const lsb: u16 = try memory.readByte(address);
     const msb = try memory.readByte(address + 1);
@@ -127,7 +134,7 @@ pub fn writeWord(
     memory: Memory,
     address: u16,
     value: u16,
-) Error!void {
+) !void {
     // TODO: handle mmio addresses
 
     const lsb: u8 = @intCast(value >> 8);
@@ -137,12 +144,12 @@ pub fn writeWord(
     try memory.writeByte(address + 1, msb);
 }
 
-pub fn readByte(memory: Memory, address: u16) Error!u8 {
+pub fn readByte(memory: Memory, address: u16) !u8 {
     // this allows for addressing of 0xfff0, which while not directly allowed
     // is used for reading a word at 0xffef, must special case when reading an
     // instruction
     if (address > io_boundary)
-        return Error.OutOfRange;
+        return error.OutOfRange;
 
     const address_in_region = address % region_size;
     const region_index = regionIndex(address);
@@ -161,18 +168,17 @@ fn writeByte(
     memory: Memory,
     address: u16,
     value: u8,
-) Error!void {
+) !void {
     // this allows for addressing of 0xfff0, which while not directly allowed
     // is used for writing a word at 0xffef
-
     if (address > io_boundary)
-        return Error.OutOfRange;
+        return error.OutOfRange;
 
     const address_in_region = address % region_size;
     const region_index = regionIndex(address);
 
     if (region_index == 0 and memory.region_bitmap.region0 == 0)
-        return Error.WriteInRom;
+        return error.WriteInRom;
 
     switch (region_index) {
         0 => memory.active_regions[0][address_in_region] = value,
@@ -181,6 +187,72 @@ fn writeByte(
         3 => memory.active_regions[3][address_in_region] = value,
         4 => memory.active_regions[4][address_in_region] = value,
         else => unreachable,
+    }
+}
+
+pub fn readBlock(
+    memory: *Memory,
+    address: u16,
+    buffer: *[block_size]u8,
+) !void {
+    const end_address = address +| block_size;
+
+    if (end_address >= io_boundary)
+        return error.OutOfRange;
+
+    const start_region = regionIndex(address);
+    const end_region = regionIndex(end_address);
+
+    const start_address_in_region = address % region_size;
+    const end_address_in_region = end_address % region_size;
+    if (start_region == end_region) {
+        @memcpy(
+            buffer,
+            memory.active_regions[start_region][start_address_in_region..end_address_in_region],
+        );
+    } else {
+        const start_region_remaining = region_size - start_address_in_region;
+        @memcpy(
+            buffer[0..start_region_remaining],
+            memory.active_regions[start_region][start_address_in_region..region_size],
+        );
+        @memcpy(
+            buffer[start_region_remaining..],
+            memory.active_regions[end_region][0..end_address_in_region],
+        );
+    }
+}
+
+pub fn writeBlock(
+    memory: *Memory,
+    address: u16,
+    buffer: *const [block_size]u8,
+) !void {
+    const end_address = address +| block_size;
+
+    if (end_address >= io_boundary)
+        return error.OutOfRange;
+
+    const start_region = regionIndex(address);
+    const end_region = regionIndex(end_address);
+
+    const start_address_in_region = address % region_size;
+    const end_address_in_region = end_address % region_size;
+    if (start_region == end_region) {
+        @memcpy(
+            memory.active_regions[start_region][start_address_in_region..end_address_in_region],
+            buffer,
+        );
+    } else {
+        const start_region_remaining = region_size - start_address_in_region;
+        @memcpy(
+            memory.active_regions[start_region][start_address_in_region..region_size],
+            buffer[0..start_region_remaining],
+        );
+        @memcpy(
+            memory.active_regions[end_region][0..end_address_in_region],
+            buffer[start_region_remaining..],
+        );
     }
 }
 

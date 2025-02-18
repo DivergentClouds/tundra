@@ -1,17 +1,25 @@
 const std = @import("std");
 const Memory = @import("Memory.zig");
-
+const Terminal = @import("Terminal.zig");
 const Cpu = @This();
 
-enabled_interrupts: Interrupts,
-interrupt_handler: u16,
-latest_interrupt: Interrupts,
+enabled_interrupts: Interrupts = .{},
+interrupt_handler: u16 = 0,
+latest_interrupt: Interrupts = .{},
+latest_interrupt_from: u16 = 0,
 
-registers: Registers,
-instruction_state: InstructionState,
+registers: Registers = .{},
+instruction_state: InstructionState = .fetch,
 
 cmp_flag: bool = false,
-clock_counter: u16,
+clock_counter: u16 = 0,
+previous_clock_counter: u16 = 0,
+
+/// informational, checked by main interpreter loop
+running: bool = true,
+
+/// 5 MHz
+pub const cycles_per_second = 5 * 1_000_000;
 
 pub const Interrupts = packed struct(u16) {
     read_protection: bool = false,
@@ -48,10 +56,10 @@ const Instruction = packed struct(u8) {
 };
 
 const Registers = struct {
-    a: u16,
-    b: u16,
-    c: u16,
-    pc: u16,
+    a: u16 = 0,
+    b: u16 = 0,
+    c: u16 = 0,
+    pc: u16 = 0,
 
     fn get(
         registers: Registers,
@@ -100,7 +108,7 @@ const InstructionWithData = struct {
 };
 
 /// active tag is the next micro-op to do
-const InstructionState = union(enum) {
+pub const InstructionState = union(enum) {
     /// active if an interrupt triggered during the last instruction
     interrupt: Interrupts,
     /// read a byte from memory
@@ -112,16 +120,21 @@ const InstructionState = union(enum) {
 };
 
 /// returns the number of cycles the tick took
-fn doTick(cpu: *Cpu, memory: Memory) Memory.Error!u16 {
+fn doTick(
+    cpu: *Cpu,
+    memory: *Memory,
+    terminal: *Terminal, // for checking keyboard interrupt
+) !u16 {
     switch (cpu.instruction_state) {
         .interrupt => |interrupt| {
+            cpu.latest_interrupt_from = cpu.registers.pc;
             cpu.registers.pc = cpu.interrupt_handler;
             cpu.latest_interrupt = interrupt;
             cpu.instruction_state = .fetch;
 
             return 1;
         },
-        .fetch => return try cpu.fetch(memory),
+        .fetch => return try cpu.fetch(memory, terminal),
         .read_memory => |instruction| return try cpu.dereferenceSource(
             memory,
             instruction,
@@ -135,7 +148,12 @@ fn doTick(cpu: *Cpu, memory: Memory) Memory.Error!u16 {
 }
 
 // returns cycles taken
-fn fetch(cpu: *Cpu, memory: Memory) Memory.Error!u16 {
+fn fetch(cpu: *Cpu, memory: Memory, terminal: *Terminal) !u16 {
+    if (try cpu.checkInterrupt(terminal)) |interrupt| {
+        cpu.instruction_state = .{ .interrupt = interrupt };
+        return 0; // interrupt triggers happen "asynchronously"
+    }
+
     const instruction = try readInstruction(
         memory,
         cpu.registers.pc,
@@ -158,7 +176,7 @@ fn fetch(cpu: *Cpu, memory: Memory) Memory.Error!u16 {
 
         return 1; // no instruction was fetched
     } else {
-        std.debug.panic("Unexpected interrupt during fetch", .{});
+        std.debug.panic("Unexpected interrupt during fetch\n", .{});
     }
 
     return 2; // memory access takes 2 cycles
@@ -168,7 +186,7 @@ fn dereferenceSource(
     cpu: *Cpu,
     memory: Memory,
     instruction: Instruction,
-) Memory.Error!u16 {
+) !u16 {
     const source_register_value = cpu.registers.get(instruction.source);
 
     if (cpu.enabled_interrupts.read_protection and
@@ -194,7 +212,7 @@ fn dereferenceSource(
 
             return 1; // no instruction was fetched
         } else if (triggered_interrupts != Interrupts{}) {
-            std.debug.panic("Unexpected interrupt during post-literal increment", .{});
+            std.debug.panic("Unexpected interrupt during post-literal increment\n", .{});
         }
     }
 
@@ -211,7 +229,7 @@ fn execute(
     cpu: *Cpu,
     memory: Memory,
     instruction_with_data: InstructionWithData,
-) Memory.Error!u16 {
+) !u16 {
     const src_data = instruction_with_data.word orelse
         cpu.registers.get(instruction_with_data.instruction.source);
 
@@ -294,15 +312,30 @@ fn execute(
 fn readInstruction(
     memory: Memory,
     address: u16,
-) Memory.Error!Instruction {
+) !Instruction {
     // special case to handle attempting to read a single byte at io_boundary.
     // since this is the only place a single byte can be read, so it's fine to
     // special case this here
     if (address >= Memory.io_boundary)
-        return Memory.Error.OutOfRange;
+        return error.OutOfRange;
 
     return @bitCast(memory.readByte(address) catch |err| switch (err) {
-        Memory.Error.OutOfRange => unreachable, // checked earlier
+        error.OutOfRange => unreachable, // checked earlier
         else => return err, // in case readByte ends up returning other errors
     });
+}
+
+fn checkInterrupt(cpu: *Cpu, terminal: *Terminal) !?Interrupts {
+    if (Memory.regionIndex(cpu.registers.pc) == 4)
+        return null;
+
+    defer cpu.previous_clock_counter = cpu.clock_counter;
+
+    if (cpu.enabled_interrupts.timer and cpu.clock_counter < cpu.previous_clock_counter) {
+        return Interrupts{ .timer = true };
+    } else if (cpu.enabled_interrupts.keyboard and try terminal.inputReady()) {
+        return Interrupts{ .keyboard = true };
+    }
+
+    return null;
 }
