@@ -28,9 +28,6 @@ MMIO Addresses
   ; write
   MMIO.WRITE_TERM = 0xFFF0
 
-  ; read
-  MMIO.STORAGE_MAX = 0xFFF1
-
   ; write
   MMIO.SEEK_STORAGE = 0xFFF1
 

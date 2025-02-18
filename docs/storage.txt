@@ -8,9 +8,8 @@ Storage
 
 Overview
 --------
-Storage I/O is done in blocks of 2048 bytes. A storage device may contain up to
-2^16 blocks. To get the number of blocks in a storage device, read from
-MMIO.STORAGE_MAX.
+Storage I/O is done in blocks of 2048 bytes. A storage device contains 2^16
+blocks.
 
 Storage Access
 --------------

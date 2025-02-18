@@ -22,6 +22,8 @@ If an MMIO address marked read/write has not been written to, it defaults to 0.
 Accessing storage mid-operation is prohibited and leads to undefined behavior.
 For more information on storage, see storage.txt.
 
+Invalid access of MMIO is prohibited and leads to undefined behavior.
+
 tundra-extra.inc includes constants for MMIO addresses. See constants.txt for
 more information.
 
@@ -34,9 +36,6 @@ more information.
 |---------|------------|-----------------------------------|
 | 0xfff0  | write      | write the least significant byte  |
 |         |            | to the terminal                   |
-|---------|------------|-----------------------------------|
-| 0xfff1  | read       | read the maximum block index that |
-|         |            | is accessible in storage          |
 |---------|------------|-----------------------------------|
 | 0xfff1  | write      | seek to the given block index in  |
 |         |            | storage                           |

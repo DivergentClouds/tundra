@@ -9,8 +9,10 @@ Interrupts
 Enabling Interrupts
 -------------------
 MMIO.ENABLED_INTS holds a bitfield containing the ids of interrupts that are
-enabled. Interrupts will never trigger when the program counter is in memory
-region 4. For more information on memory regions, see banking.txt.
+enabled. If a non-protection interrupt would trigger mid-instruction, it
+instead triggers after the instruction. Interrupts will never trigger when the
+program counter is in memory region 4. For more information on memory regions,
+see banking.txt.
 
 Interrupt Kinds
 ---------------
