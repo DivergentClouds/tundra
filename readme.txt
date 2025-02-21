@@ -20,11 +20,12 @@ The Tundra emulator may be compiled with the Zig master branch.
 
 Usage
 -----
-  tundra <memory_file> [[-s storage_file] ...] [-d]
+  tundra <rom_file> [[-s storage_file] ...] [-d]
 
 Usage Notes
 -----------
-- if the '-d' flag is set, each instruction will be printed as it is run
+- if the '-d' flag is set, debug mode will be activated
+- rom files may be at most 12 KiB
 
 Assembler
 =========

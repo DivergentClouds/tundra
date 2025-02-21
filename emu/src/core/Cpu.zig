@@ -3,20 +3,36 @@ const Memory = @import("Memory.zig");
 const Terminal = @import("Terminal.zig");
 const Cpu = @This();
 
-enabled_interrupts: Interrupts = .{},
-interrupt_handler: u16 = 0,
-latest_interrupt: Interrupts = .{},
-latest_interrupt_from: u16 = 0,
+enabled_interrupts: Interrupts,
+interrupt_handler: u16,
+latest_interrupt: Interrupts,
+latest_interrupt_from: u16,
 
-registers: Registers = .{},
-instruction_state: InstructionState = .fetch,
+registers: Registers,
+instruction_state: InstructionState,
 
-cmp_flag: bool = false,
-clock_counter: u16 = 0,
-previous_clock_counter: u16 = 0,
+cmp_flag: bool,
+clock_counter: u16,
+previous_clock_counter: u16,
 
 /// informational, checked by main interpreter loop
-running: bool = true,
+running: bool,
+
+pub const init: Cpu = .{
+    .enabled_interrupts = .init,
+    .interrupt_handler = 0,
+    .latest_interrupt = .init,
+    .latest_interrupt_from = 0,
+
+    .registers = .init,
+    .instruction_state = .fetch,
+
+    .cmp_flag = false,
+    .clock_counter = 0,
+    .previous_clock_counter = 0,
+
+    .running = true,
+};
 
 /// 5 MHz
 pub const cycles_per_second = 5 * 1_000_000;
@@ -28,6 +44,33 @@ pub const Interrupts = packed struct(u16) {
     timer: bool = false,
     keyboard: bool = false,
     _: u11 = 0,
+
+    const init: Interrupts = .{};
+
+    pub fn format(
+        interrupts: Interrupts,
+        _: []const u8,
+        _: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        var interrupt_printed = false;
+        inline for (@typeInfo(Interrupts).@"struct".fields) |field| {
+            const field_contents = @field(interrupts, field.name);
+
+            const interrupt_occured = if (@TypeOf(field_contents) == bool)
+                field_contents
+            else
+                false;
+
+            if (interrupt_occured) {
+                if (interrupt_printed) {
+                    try writer.writeAll(", ");
+                }
+                try writer.writeAll(field.name);
+                interrupt_printed = true;
+            }
+        }
+    }
 };
 
 const Opcode = enum(u3) {
@@ -49,10 +92,30 @@ const RegisterKind = enum(u2) {
 };
 
 const Instruction = packed struct(u8) {
-    opcode: Opcode,
-    destination: RegisterKind,
-    deref_source: bool,
     source: RegisterKind,
+    deref_source: bool,
+    destination: RegisterKind,
+    opcode: Opcode,
+
+    pub fn format(
+        instruction: Instruction,
+        _: []const u8,
+        _: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        try writer.print(
+            "{s} {s}, {s}{s}",
+            .{
+                @tagName(instruction.opcode),
+                @tagName(instruction.destination),
+                if (instruction.deref_source)
+                    "*"
+                else
+                    "",
+                @tagName(instruction.source),
+            },
+        );
+    }
 };
 
 const Registers = struct {
@@ -60,6 +123,13 @@ const Registers = struct {
     b: u16 = 0,
     c: u16 = 0,
     pc: u16 = 0,
+
+    const init: Registers = .{
+        .a = 0,
+        .b = 0,
+        .c = 0,
+        .pc = 0,
+    };
 
     fn get(
         registers: Registers,
@@ -85,13 +155,11 @@ const Registers = struct {
             .c => cpu.registers.c = value,
             .pc => {
                 if (cpu.cmp_flag) {
-                    cpu.cmp_flag.* = false;
+                    cpu.cmp_flag = false;
                 } else {
-                    if (cpu.enabled_interrupts.exec_protection and
-                        Memory.regionIndex(cpu.registers.pc) <= 3 and
-                        Memory.regionIndex(value) == 4)
-                    {
-                        return Interrupts{ .exec_protection = true };
+                    const interrupt = checkPermissionInterrupt(cpu.*, value, .execute);
+                    if (interrupt != Interrupts{}) {
+                        return interrupt;
                     }
                     cpu.registers.pc = value;
                 }
@@ -104,7 +172,25 @@ const Registers = struct {
 const InstructionWithData = struct {
     instruction: Instruction,
     /// null if instruction.deref_source == false
-    word: ?u16 = null,
+    data: ?u16 = null,
+
+    pub fn format(
+        instruction_with_data: InstructionWithData,
+        _: []const u8,
+        _: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        try writer.print(
+            "{}",
+            .{
+                instruction_with_data.instruction,
+            },
+        );
+
+        if (instruction_with_data.data) |data| {
+            try writer.print(" ({x:0>4})", .{data});
+        }
+    }
 };
 
 /// active tag is the next micro-op to do
@@ -120,7 +206,7 @@ pub const InstructionState = union(enum) {
 };
 
 /// returns the number of cycles the tick took
-fn doTick(
+pub fn doTick(
     cpu: *Cpu,
     memory: *Memory,
     terminal: *Terminal, // for checking keyboard interrupt
@@ -134,9 +220,9 @@ fn doTick(
 
             return 1;
         },
-        .fetch => return try cpu.fetch(memory, terminal),
+        .fetch => return try cpu.fetch(memory.*, terminal),
         .read_memory => |instruction| return try cpu.dereferenceSource(
-            memory,
+            memory.*,
             instruction,
         ),
         .execute => |instruction_with_data| return try execute(
@@ -149,11 +235,12 @@ fn doTick(
 
 // returns cycles taken
 fn fetch(cpu: *Cpu, memory: Memory, terminal: *Terminal) !u16 {
-    if (try cpu.checkInterrupt(terminal)) |interrupt| {
+    const interrupt = try cpu.checkAsyncInterrupt(terminal);
+
+    if (interrupt != Interrupts{}) {
         cpu.instruction_state = .{ .interrupt = interrupt };
         return 0; // interrupt triggers happen "asynchronously"
     }
-
     const instruction = try readInstruction(
         memory,
         cpu.registers.pc,
@@ -176,7 +263,7 @@ fn fetch(cpu: *Cpu, memory: Memory, terminal: *Terminal) !u16 {
 
         return 1; // no instruction was fetched
     } else {
-        std.debug.panic("Unexpected interrupt during fetch\n", .{});
+        std.debug.panic("Unexpected interrupt(s) during fetch: {}\r\n", .{interrupt});
     }
 
     return 2; // memory access takes 2 cycles
@@ -189,21 +276,20 @@ fn dereferenceSource(
 ) !u16 {
     const source_register_value = cpu.registers.get(instruction.source);
 
-    if (cpu.enabled_interrupts.read_protection and
-        Memory.regionIndex(cpu.registers.pc) <= 3 and
-        Memory.regionIndex(source_register_value +| 1) == 4) // add 1 to check the upper byte of the word
-    {
-        cpu.instruction_state = .{ .interrupt = Interrupts{ .read_protection = true } };
-        return 1; // memory was not read
+    // we know instruction.deref_source is true
+    const interrupt = checkPermissionInterrupt(cpu.*, source_register_value, .write);
+
+    if (interrupt != Interrupts{}) {
+        cpu.instruction_state = .{ .interrupt = interrupt };
+        return 1;
     }
 
-    // we know instruction.deref_source is true
     const word = try memory.readWord(source_register_value);
 
     if (instruction.source == .pc) {
         const triggered_interrupts = Registers.set(
             .pc,
-            source_register_value + 2, // pc
+            cpu.registers.pc + 2,
             cpu,
         );
 
@@ -219,7 +305,7 @@ fn dereferenceSource(
     cpu.instruction_state = .{
         .execute = .{
             .instruction = instruction,
-            .word = word,
+            .data = word,
         },
     };
     return 2;
@@ -227,10 +313,10 @@ fn dereferenceSource(
 
 fn execute(
     cpu: *Cpu,
-    memory: Memory,
+    memory: *Memory,
     instruction_with_data: InstructionWithData,
 ) !u16 {
-    const src_data = instruction_with_data.word orelse
+    const src_data = instruction_with_data.data orelse
         cpu.registers.get(instruction_with_data.instruction.source);
 
     const dest = instruction_with_data.instruction.destination;
@@ -239,13 +325,25 @@ fn execute(
 
     switch (instruction_with_data.instruction.opcode) {
         .mov => {
-            Registers.set(
+            const interrupt = Registers.set(
                 dest,
                 src_data,
                 cpu,
             );
+
+            if (interrupt != Interrupts{}) {
+                cpu.instruction_state = .{ .interrupt = interrupt };
+                return 1;
+            }
         },
         .sto => {
+            const interrupt = checkPermissionInterrupt(cpu.*, dest_data, .write);
+
+            if (interrupt != Interrupts{}) {
+                cpu.instruction_state = .{ .interrupt = interrupt };
+                return 1;
+            }
+
             try memory.writeWord(
                 dest_data,
                 src_data,
@@ -254,11 +352,16 @@ fn execute(
             return 2;
         },
         .add => {
-            Registers.set(
+            const interrupt = Registers.set(
                 dest,
                 dest_data +% src_data,
                 cpu,
             );
+
+            if (interrupt != Interrupts{}) {
+                cpu.instruction_state = .{ .interrupt = interrupt };
+                return 1;
+            }
         },
         .cmp => {
             const signed_dest_data: i16 = @bitCast(dest_data);
@@ -277,34 +380,56 @@ fn execute(
                 src_data,
             );
 
-            Registers.set(
+            const interrupt = Registers.set(
                 dest,
                 rotated_dest_data,
                 cpu,
             );
+
+            if (interrupt != Interrupts{}) {
+                cpu.instruction_state = .{ .interrupt = interrupt };
+                return 1;
+            }
         },
         .@"and" => {
-            Registers.set(
+            const interrupt = Registers.set(
                 dest,
                 dest_data & src_data,
                 cpu,
             );
+
+            if (interrupt != Interrupts{}) {
+                cpu.instruction_state = .{ .interrupt = interrupt };
+                return 1;
+            }
         },
         .nor => {
-            Registers.set(
+            const interrupt = Registers.set(
                 dest,
                 ~(dest_data | src_data),
                 cpu,
             );
+
+            if (interrupt != Interrupts{}) {
+                cpu.instruction_state = .{ .interrupt = interrupt };
+                return 1;
+            }
         },
         .xor => {
-            Registers.set(
+            const interrupt = Registers.set(
                 dest,
                 dest_data ^ src_data,
                 cpu,
             );
+
+            if (interrupt != Interrupts{}) {
+                cpu.instruction_state = .{ .interrupt = interrupt };
+                return 1;
+            }
         },
     }
+
+    cpu.instruction_state = .fetch;
 
     return 1;
 }
@@ -325,9 +450,9 @@ fn readInstruction(
     });
 }
 
-fn checkInterrupt(cpu: *Cpu, terminal: *Terminal) !?Interrupts {
+fn checkAsyncInterrupt(cpu: *Cpu, terminal: *Terminal) !Interrupts {
     if (Memory.regionIndex(cpu.registers.pc) == 4)
-        return null;
+        return Interrupts{};
 
     defer cpu.previous_clock_counter = cpu.clock_counter;
 
@@ -337,5 +462,27 @@ fn checkInterrupt(cpu: *Cpu, terminal: *Terminal) !?Interrupts {
         return Interrupts{ .keyboard = true };
     }
 
-    return null;
+    return Interrupts{};
+}
+
+fn checkPermissionInterrupt(
+    cpu: Cpu,
+    address: u16,
+    kind: enum { read, write, execute },
+) Interrupts {
+    const pc_region = Memory.regionIndex(cpu.registers.pc);
+    const address_region = Memory.regionIndex(address);
+
+    const permission_region = pc_region < 4 and address_region == 4;
+
+    switch (kind) {
+        .read => if (permission_region and cpu.enabled_interrupts.read_protection)
+            return Interrupts{ .read_protection = true },
+        .write => if (permission_region and cpu.enabled_interrupts.write_protection)
+            return Interrupts{ .write_protection = true },
+        .execute => if (permission_region and cpu.enabled_interrupts.exec_protection)
+            return Interrupts{ .exec_protection = true },
+    }
+
+    return Interrupts{};
 }

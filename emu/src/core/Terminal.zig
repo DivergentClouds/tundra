@@ -10,15 +10,16 @@ const OriginalTerminal = union {
     termios: std.posix.termios,
     /// windows only
     mode: struct {
-        original_in_mode: DWord,
-        original_out_mode: DWord,
+        in: DWord,
+        out: DWord,
     },
 };
 
 const PollKinds = enum { stdin };
 
-original_terminal: OriginalTerminal,
+original: OriginalTerminal,
 poller: std.io.Poller(PollKinds),
+debug_input_fifo: ?std.fifo.LinearFifo(u8, .Dynamic),
 
 const InputByte = enum(u8) {
     up = 'i' + 0x80,
@@ -47,8 +48,12 @@ const OutputByte = enum(u8) {
 };
 
 pub fn inputReady(terminal: *Terminal) !bool {
-    // might be backwards?
-    return try terminal.poller.pollTimeout(1);
+    if (terminal.debug_input_fifo) |fifo| {
+        return fifo.readableLength() > 0;
+    } else {
+        // might be backwards?
+        return try terminal.poller.pollTimeout(1);
+    }
 }
 
 pub fn readChar(terminal: *Terminal) !u16 {
@@ -118,15 +123,21 @@ pub fn readChar(terminal: *Terminal) !u16 {
             0x7f => 0x08,
             '\n' => '\r',
             '\r', '\t', 0x08 => byte,
-            0...0x1f => 0xffff,
-            else => byte,
+            else => switch (byte) {
+                0...0x1f => 0xffff,
+                else => byte,
+            },
         };
     } else return 0xffff;
 }
 
 fn readCharInner(terminal: *Terminal) !?u8 {
     if (try terminal.inputReady()) {
-        return terminal.poller.fifo(.stdin).readItem().?; // can't be null because we polled in inputReady
+        if (terminal.debug_input_fifo) |*fifo| {
+            return fifo.readItem().?; // can't be null due to the check in inputReady
+        } else {
+            return terminal.poller.fifo(.stdin).readItem().?; // can't be null because we polled in inputReady
+        }
     }
     return null;
 }
@@ -153,25 +164,29 @@ pub fn writeChar(byte: u8) !void {
     }
 }
 
-pub fn init(allocator: std.mem.Allocator) !Terminal {
+pub fn init(allocator: std.mem.Allocator, debug_mode: bool) !Terminal {
     const original_terminal = if (builtin.os.tag == .windows)
         try initWindows()
     else
         try initPosix();
 
-    return .{
-        .original_terminal = original_terminal,
+    return Terminal{
+        .original = original_terminal,
         .poller = std.io.poll(allocator, PollKinds, .{
             .stdin = std.io.getStdIn(),
         }),
+        .debug_input_fifo = if (debug_mode)
+            .init(allocator)
+        else
+            null,
     };
 }
 
 fn initWindows() !OriginalTerminal {
     var result: OriginalTerminal = .{
         .mode = .{
-            .original_in_mode = undefined,
-            .original_out_mode = undefined,
+            .in = undefined,
+            .out = undefined,
         },
     };
 
@@ -182,7 +197,7 @@ fn initWindows() !OriginalTerminal {
     const enable_virtual_terminal_input: DWord = 0x200; // VT input sequences
 
     try initWindowsConsoleMode(
-        &result.original_terminal.mode.original_in_mode,
+        &result.original_terminal.mode.in,
         stdin_handle,
         &.{enable_virtual_terminal_input},
         &.{ enable_line_input, enable_echo_input },
@@ -195,7 +210,7 @@ fn initWindows() !OriginalTerminal {
     const disable_newline_auto_return: DWord = 0x8; // when enabled, disables automatic \r on \n (i think?)
 
     try initWindowsConsoleMode(
-        &result.original_terminal.mode.original_out_mode,
+        &result.original_terminal.mode.out,
         stdout_handle,
         &.{ enable_processed_output, enable_virtual_terminal_processing, disable_newline_auto_return },
         &.{},
@@ -245,6 +260,10 @@ fn initPosix() !OriginalTerminal {
 }
 
 pub fn deinit(terminal: *Terminal) void {
+    if (terminal.debug_input_fifo) |fifo| {
+        fifo.deinit();
+    }
+
     terminal.poller.deinit();
 
     if (builtin.os.tag == .windows) {
@@ -255,18 +274,18 @@ pub fn deinit(terminal: *Terminal) void {
 }
 
 fn deinitWindows(terminal: Terminal) void {
-    // TODO: is deinit needed on windows?
+    // TODO: is this function needed?
     const stdin_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
     const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
 
     var failed = std.os.windows.kernel32.SetConsoleMode(
         stdin_handle,
-        terminal.original_terminal.mode.original_in_mode,
+        terminal.original.mode.original_in_mode,
     );
 
     failed |= std.os.windows.kernel32.SetConsoleMode(
         stdout_handle,
-        terminal.original_terminal.mode.original_out_mode,
+        terminal.original.mode.original_out_mode,
     );
 
     if (failed != 0)
@@ -275,6 +294,6 @@ fn deinitWindows(terminal: Terminal) void {
 
 fn deinitPosix(terminal: Terminal) void {
     const stdin_handle = std.io.getStdIn().handle;
-    std.posix.tcsetattr(stdin_handle, .FLUSH, terminal.original_termios) catch
+    std.posix.tcsetattr(stdin_handle, .FLUSH, terminal.original.termios) catch
         std.debug.panic("Failed to reset termios\n", .{});
 }

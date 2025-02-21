@@ -34,8 +34,8 @@ more information.
 |         |            | then read a byte from the         |
 |         |            | terminal, otherwise read -1       |
 |---------|------------|-----------------------------------|
-| 0xfff0  | write      | write the least significant byte  |
-|         |            | to the terminal                   |
+| 0xfff0  | write      | write the lower byte of the given |
+|         |            | value to the terminal             |
 |---------|------------|-----------------------------------|
 | 0xfff1  | write      | seek to the given block index in  |
 |         |            | storage                           |

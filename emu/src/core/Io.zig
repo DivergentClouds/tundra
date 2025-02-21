@@ -44,7 +44,7 @@ pub fn write(
     switch (address) {
         .write_terminal => try Terminal.writeChar(@truncate(value)),
         .seek_storage => try io.storage.seek(value),
-        .store_block => try io.storage.storeBlock(value, io.memory),
+        .store_block => try io.storage.storeBlock(value, io.memory.*),
         .load_block => try io.storage.loadBlock(value, io.memory),
         .storage_index => io.storage.device_index = @truncate(value),
         .interrupt_handler => io.cpu.interrupt_handler = value,
@@ -61,7 +61,7 @@ pub fn read(
 ) !u16 {
     return switch (address) {
         .read_terminal => try io.terminal.readChar(),
-        .storage_ready => @intFromBool(io.storage.ready_delay == 0),
+        .storage_ready => @intFromBool(io.storage.ready_delay[io.storage.device_index] == 0),
         .storage_count => io.storage.deviceCount(),
         .interrupt_handler => io.cpu.interrupt_handler,
         .interrupt_from => io.cpu.latest_interrupt_from,

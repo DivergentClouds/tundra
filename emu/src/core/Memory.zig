@@ -10,7 +10,7 @@ const mmio_size = 0x10;
 /// the bottom of mmio space
 pub const io_boundary = 0x10000 - mmio_size;
 
-const region_size = 12 * 1024;
+pub const region_size = 12 * 1024;
 const region_count = 5;
 
 const bank_count = 16;
@@ -19,6 +19,8 @@ allocator: std.mem.Allocator,
 region_bitmap: RegionBitmap,
 active_regions: *[5]*[region_size]u8,
 banks: *[bank_count]Bank,
+
+io: Io,
 
 const Bank = struct {
     region0: *[region_size]u8,
@@ -54,12 +56,11 @@ const Bank = struct {
     }
 };
 
-/// TODO: check if this needs reordering for bitcasts
 const RegionBitmap = packed struct(u16) {
-    region0: u4,
-    region1: u4,
-    region2: u4,
     region3: u4,
+    region2: u4,
+    region1: u4,
+    region0: u4,
 };
 
 pub fn mapRegions(memory: *Memory, bitmap: u16) void {
@@ -67,14 +68,15 @@ pub fn mapRegions(memory: *Memory, bitmap: u16) void {
 
     memory.region_bitmap = region_bitmap;
 
-    memory.active_regions[0] = memory.banks[region_bitmap.region0][0];
-    memory.active_regions[1] = memory.banks[region_bitmap.region1][1];
-    memory.active_regions[2] = memory.banks[region_bitmap.region2][2];
-    memory.active_regions[3] = memory.banks[region_bitmap.region3][3];
+    memory.active_regions[0] = memory.banks[region_bitmap.region0].region0;
+    memory.active_regions[1] = memory.banks[region_bitmap.region1].region1;
+    memory.active_regions[2] = memory.banks[region_bitmap.region2].region2;
+    memory.active_regions[3] = memory.banks[region_bitmap.region3].region3;
 }
 
 pub fn init(
     allocator: std.mem.Allocator,
+    io: Io,
 ) !Memory {
     const banks = try allocator.alloc(Bank, bank_count);
     errdefer allocator.free(banks);
@@ -105,6 +107,7 @@ pub fn init(
         .region_bitmap = @bitCast(@as(u16, 0)),
         .active_regions = active_regions[0..region_count],
         .banks = banks[0..bank_count],
+        .io = io,
     };
 }
 
@@ -122,7 +125,9 @@ pub fn readWord(
     memory: Memory,
     address: u16,
 ) !u16 {
-    if (address >= io_boundary) {}
+    if (address >= io_boundary) {
+        return try memory.io.read(@enumFromInt(address));
+    }
 
     const lsb: u16 = try memory.readByte(address);
     const msb = try memory.readByte(address + 1);
@@ -131,11 +136,14 @@ pub fn readWord(
 }
 
 pub fn writeWord(
-    memory: Memory,
+    memory: *Memory,
     address: u16,
     value: u16,
 ) !void {
-    // TODO: handle mmio addresses
+    if (address >= io_boundary) {
+        try memory.io.write(@enumFromInt(address), value);
+        return;
+    }
 
     const lsb: u8 = @intCast(value >> 8);
     const msb: u8 = @intCast(value & 0xff);
@@ -191,7 +199,7 @@ fn writeByte(
 }
 
 pub fn readBlock(
-    memory: *Memory,
+    memory: Memory,
     address: u16,
     buffer: *[block_size]u8,
 ) !void {
@@ -254,6 +262,13 @@ pub fn writeBlock(
             buffer[start_region_remaining..],
         );
     }
+}
+
+pub fn writeRom(memory: *Memory, rom_data: []const u8) !void {
+    if (rom_data.len > region_size)
+        return error.RomTooLarge;
+
+    @memcpy(memory.banks[0].region0[0..rom_data.len], rom_data);
 }
 
 pub fn regionIndex(address: u16) u3 {
