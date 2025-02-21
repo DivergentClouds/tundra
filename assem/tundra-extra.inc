@@ -20,6 +20,7 @@ virtual at 0xfff0
   mmio?:
   .read_term? = 0xfff0
   .write_term? = 0xfff0
+  .terminal? = 0xfff0
   .seek_storage? = 0xfff1
   .storage_ready? = 0xfff2
   .store_block? = 0xfff2

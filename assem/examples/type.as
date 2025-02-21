@@ -1,15 +1,19 @@
 include '../tundra-extra.inc'
 
-movi a, mmio.read_char
-movi b, mmio.write_char
+movi a, mmio.terminal
+
 
 loop:
-  mov c, *a
+  mov b, *a
 
-  cmpi c, -1
+  cmpi b, -1
   jmpi loop ; loop until character is read
 
-  sto b, c
-  jnei c, char.cr, loop
-  stoi b, char.lf
+  sto a, b
+  jeqpi b, char.cr, exit
   jmpi loop
+
+exit:
+  stoi a, char.lf
+  movi a, mmio.halt
+  sto a, a

@@ -51,8 +51,8 @@ pub fn inputReady(terminal: *Terminal) !bool {
     if (terminal.debug_input_fifo) |fifo| {
         return fifo.readableLength() > 0;
     } else {
-        // might be backwards?
-        return try terminal.poller.pollTimeout(1);
+        _ = try terminal.poller.pollTimeout(1);
+        return terminal.poller.fifo(.stdin).readableLength() > 0;
     }
 }
 
@@ -247,10 +247,21 @@ fn initPosix() !OriginalTerminal {
     const original_termios = try std.posix.tcgetattr(stdin_handle);
 
     var raw_termios = original_termios;
-    raw_termios.lflag.ECHO = false;
-    raw_termios.lflag.ICANON = false;
 
-    raw_termios.oflag.OPOST = false; // turn off output postprocessing
+    raw_termios.iflag.INLCR = true;
+
+    raw_termios.oflag.OPOST = true;
+
+    raw_termios.lflag.ECHO = false;
+    raw_termios.lflag.ECHONL = false;
+    raw_termios.lflag.ICANON = false;
+    raw_termios.lflag.ISIG = true;
+    raw_termios.lflag.IEXTEN = false;
+
+    raw_termios.cflag.PARENB = false;
+    raw_termios.cflag.CSIZE = .CS8;
+    raw_termios.cc[@intFromEnum(std.posix.V.TIME)] = 0;
+    raw_termios.cc[@intFromEnum(std.posix.V.MIN)] = 0;
 
     try std.posix.tcsetattr(stdin_handle, .FLUSH, raw_termios);
 

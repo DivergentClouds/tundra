@@ -28,6 +28,9 @@ MMIO Addresses
   ; write
   MMIO.WRITE_TERM = 0xFFF0
 
+  ; alias for MMIO.READ_TERM and MMIO.WRITE_TERM
+  MMIO.TERMINAL = 0xFFF0
+
   ; write
   MMIO.SEEK_STORAGE = 0xFFF1
 
