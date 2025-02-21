@@ -147,6 +147,7 @@ const Registers = struct {
     fn set(
         register: RegisterKind,
         value: u16,
+        jump: bool,
         cpu: *Cpu,
     ) Interrupts {
         switch (register) {
@@ -154,7 +155,7 @@ const Registers = struct {
             .b => cpu.registers.b = value,
             .c => cpu.registers.c = value,
             .pc => {
-                if (cpu.cmp_flag) {
+                if (cpu.cmp_flag and jump) {
                     cpu.cmp_flag = false;
                 } else {
                     const interrupt = checkPermissionInterrupt(cpu.*, value, .execute);
@@ -211,6 +212,9 @@ pub fn doTick(
     memory: *Memory,
     terminal: *Terminal, // for checking keyboard interrupt
 ) !u16 {
+    //    std.debug.print("\tstart state = {}\r\n", .{cpu.instruction_state});
+    //std.debug.print("\tstart state = {} @ {x:0>4}\r\n", .{ cpu.instruction_state, cpu.registers.pc });
+
     switch (cpu.instruction_state) {
         .interrupt => |interrupt| {
             cpu.latest_interrupt_from = cpu.registers.pc;
@@ -249,6 +253,7 @@ fn fetch(cpu: *Cpu, memory: Memory, terminal: *Terminal) !u16 {
     const triggered_interrupts = Registers.set(
         .pc,
         cpu.registers.pc + 1, // pc can never be above 0xfff0, no need to wrap
+        false,
         cpu,
     );
 
@@ -290,6 +295,7 @@ fn dereferenceSource(
         const triggered_interrupts = Registers.set(
             .pc,
             cpu.registers.pc + 2,
+            false,
             cpu,
         );
 
@@ -323,11 +329,14 @@ fn execute(
 
     const dest_data = cpu.registers.get(dest);
 
+    defer cpu.instruction_state = .fetch;
+
     switch (instruction_with_data.instruction.opcode) {
         .mov => {
             const interrupt = Registers.set(
                 dest,
                 src_data,
+                true,
                 cpu,
             );
 
@@ -355,6 +364,7 @@ fn execute(
             const interrupt = Registers.set(
                 dest,
                 dest_data +% src_data,
+                true,
                 cpu,
             );
 
@@ -383,6 +393,7 @@ fn execute(
             const interrupt = Registers.set(
                 dest,
                 rotated_dest_data,
+                true,
                 cpu,
             );
 
@@ -395,6 +406,7 @@ fn execute(
             const interrupt = Registers.set(
                 dest,
                 dest_data & src_data,
+                true,
                 cpu,
             );
 
@@ -407,6 +419,7 @@ fn execute(
             const interrupt = Registers.set(
                 dest,
                 ~(dest_data | src_data),
+                true,
                 cpu,
             );
 
@@ -419,6 +432,7 @@ fn execute(
             const interrupt = Registers.set(
                 dest,
                 dest_data ^ src_data,
+                true,
                 cpu,
             );
 
@@ -428,8 +442,6 @@ fn execute(
             }
         },
     }
-
-    cpu.instruction_state = .fetch;
 
     return 1;
 }
@@ -444,10 +456,13 @@ fn readInstruction(
     if (address >= Memory.io_boundary)
         return error.OutOfRange;
 
-    return @bitCast(memory.readByte(address) catch |err| switch (err) {
+    const byte = memory.readByte(address) catch |err| switch (err) {
         error.OutOfRange => unreachable, // checked earlier
         else => return err, // in case readByte ends up returning other errors
-    });
+    };
+    const inst: Instruction = @bitCast(byte);
+
+    return inst;
 }
 
 fn checkAsyncInterrupt(cpu: *Cpu, terminal: *Terminal) !Interrupts {

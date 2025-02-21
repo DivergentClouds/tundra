@@ -25,7 +25,7 @@ puts:
     cmpi b, 0
     jmpi .end
 
-    movi a, mmio.write_char
+    movi a, mmio.write_term
     sto a, b
 
     ; str is 4 bytes deep in the stack

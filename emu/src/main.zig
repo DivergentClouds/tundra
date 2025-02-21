@@ -59,13 +59,15 @@ const Core = struct {
 
         const pre_fetch_pc = core.cpu.registers.pc;
         // fetch
-        core.cpu.clock_counter +%= try core.cpu.doTick(&core.memory, &core.terminal);
+        if (core.cpu.instruction_state == .fetch) {
+            core.cpu.clock_counter +%= try core.cpu.doTick(&core.memory, &core.terminal);
+        } else {
+            std.debug.panic("exepected fetch, got: {}", .{core.cpu.instruction_state});
+        }
 
         while (core.cpu.instruction_state != .fetch and
             core.cpu.running)
         {
-            core.cpu.clock_counter +%= try core.cpu.doTick(&core.memory, &core.terminal);
-
             if (debug_print) {
                 const stderr = std.io.getStdErr().writer();
 
@@ -85,6 +87,7 @@ const Core = struct {
                     .fetch => {},
                 }
             }
+            core.cpu.clock_counter +%= try core.cpu.doTick(&core.memory, &core.terminal);
         }
     }
 };

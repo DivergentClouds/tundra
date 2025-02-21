@@ -130,9 +130,9 @@ pub fn readWord(
     }
 
     const lsb: u16 = try memory.readByte(address);
-    const msb = try memory.readByte(address + 1);
+    const msb: u16 = try memory.readByte(address + 1);
 
-    return (lsb << 8) | msb;
+    return (msb << 8) | lsb;
 }
 
 pub fn writeWord(
@@ -145,8 +145,8 @@ pub fn writeWord(
         return;
     }
 
-    const lsb: u8 = @intCast(value >> 8);
-    const msb: u8 = @intCast(value & 0xff);
+    const msb: u8 = @intCast(value >> 8);
+    const lsb: u8 = @intCast(value & 0xff);
 
     try memory.writeByte(address, lsb);
     try memory.writeByte(address + 1, msb);
