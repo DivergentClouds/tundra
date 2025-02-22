@@ -1,10 +1,14 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const Cpu = @import("core/Cpu.zig");
 const Io = @import("core/Io.zig");
 const Memory = @import("core/Memory.zig");
 const Storage = @import("core/Storage.zig");
 const Terminal = @import("core/Terminal.zig");
+
+/// set by signal handler when SIGINT is received
+var cleanup = false;
 
 const Core = struct {
     cpu: Cpu,
@@ -167,7 +171,17 @@ fn interpret(rom: []const u8, allocator: std.mem.Allocator, storage: []const std
     var core: *Core = try .init(allocator, storage, debugging);
     defer core.deinit();
 
-    // TODO: handle ctrl-c to reset terminal on early exit
+    if (builtin.os.tag != .windows) {
+        std.posix.sigaction(
+            std.posix.SIG.INT,
+            &.{
+                .handler = .{ .handler = &signalHandler },
+                .mask = @splat(0),
+                .flags = 0,
+            },
+            null,
+        );
+    }
 
     try core.memory.writeRom(rom);
 
@@ -177,6 +191,15 @@ fn interpret(rom: []const u8, allocator: std.mem.Allocator, storage: []const std
     } else {
         while (core.cpu.running) {
             try core.step(debugging); // more readable than just passing `false`
+
+            if (cleanup) break;
         }
+    }
+}
+
+fn signalHandler(signum: i32) callconv(.C) void {
+    switch (signum) {
+        std.posix.SIG.INT => cleanup = true,
+        else => {},
     }
 }
