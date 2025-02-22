@@ -293,17 +293,17 @@ fn deinitWindows(terminal: Terminal) void {
     const stdout_handle = std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE) catch
         std.debug.panic("failed to get stdin handle on deinit", .{});
 
-    var failed = std.os.windows.kernel32.SetConsoleMode(
+    var success = std.os.windows.kernel32.SetConsoleMode(
         stdin_handle,
         terminal.original.mode.in,
     );
 
-    failed |= std.os.windows.kernel32.SetConsoleMode(
+    success &= std.os.windows.kernel32.SetConsoleMode(
         stdout_handle,
         terminal.original.mode.out,
     );
 
-    if (failed != 0)
+    if (success == 0)
         std.debug.panic("Failed to reset terminal settings\n", .{});
 }
 
