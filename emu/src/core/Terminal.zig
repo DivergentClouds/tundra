@@ -197,7 +197,7 @@ fn initWindows() !OriginalTerminal {
     const enable_virtual_terminal_input: DWord = 0x200; // VT input sequences
 
     try initWindowsConsoleMode(
-        &result.original_terminal.mode.in,
+        &result.mode.in,
         stdin_handle,
         &.{enable_virtual_terminal_input},
         &.{ enable_line_input, enable_echo_input },
@@ -210,11 +210,13 @@ fn initWindows() !OriginalTerminal {
     const disable_newline_auto_return: DWord = 0x8; // when enabled, disables automatic \r on \n (i think?)
 
     try initWindowsConsoleMode(
-        &result.original_terminal.mode.out,
+        &result.mode.out,
         stdout_handle,
         &.{ enable_processed_output, enable_virtual_terminal_processing, disable_newline_auto_return },
         &.{},
     );
+
+    return result;
 }
 
 fn initWindowsConsoleMode(
@@ -286,17 +288,19 @@ pub fn deinit(terminal: *Terminal) void {
 
 fn deinitWindows(terminal: Terminal) void {
     // TODO: is this function needed?
-    const stdin_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
-    const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
+    const stdin_handle = std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE) catch
+        std.debug.panic("failed to get stdin handle on deinit", .{});
+    const stdout_handle = std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE) catch
+        std.debug.panic("failed to get stdin handle on deinit", .{});
 
     var failed = std.os.windows.kernel32.SetConsoleMode(
         stdin_handle,
-        terminal.original.mode.original_in_mode,
+        terminal.original.mode.in,
     );
 
     failed |= std.os.windows.kernel32.SetConsoleMode(
         stdout_handle,
-        terminal.original.mode.original_out_mode,
+        terminal.original.mode.out,
     );
 
     if (failed != 0)
