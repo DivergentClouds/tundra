@@ -200,13 +200,14 @@ fn initWindows() !OriginalTerminal {
 
     const enable_line_input: DWord = 0x2; // cooked input
     const enable_echo_input: DWord = 0x4; // echo on input
+    const enable_insert_mode: DWord = 0x20; // typing a character shifts characters to the right over
     const enable_virtual_terminal_input: DWord = 0x200; // VT input sequences
 
     try initWindowsConsoleMode(
         &result.mode.in,
         stdin_handle,
         &.{enable_virtual_terminal_input},
-        &.{ enable_line_input, enable_echo_input },
+        &.{ enable_line_input, enable_echo_input, enable_insert_mode },
     );
 
     const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
