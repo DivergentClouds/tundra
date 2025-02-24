@@ -51,10 +51,12 @@ pub fn inputReady(terminal: *Terminal) !bool {
     if (terminal.debug_input_fifo) |fifo| {
         return fifo.readableLength() > 0;
     } else {
-        // FIXME: hangs on windows due to an stdlib bug D:
+        // NOTE: poll hangs on windows due to an stdlib bug
         // https://github.com/ziglang/zig/issues/22991
+
+        // workaround for poll
         if (builtin.os.tag == .windows) {
-            return error.PollBrokenOnWindows;
+            return _kbhit() != 0;
         }
 
         _ = try terminal.poller.pollTimeout(1);
@@ -319,3 +321,5 @@ fn deinitPosix(terminal: Terminal) void {
     std.posix.tcsetattr(stdin_handle, .FLUSH, terminal.original.termios) catch
         std.debug.panic("Failed to reset termios\n", .{});
 }
+
+extern fn _kbhit() callconv(.winapi) c_int;
