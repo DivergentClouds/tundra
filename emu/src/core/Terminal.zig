@@ -51,6 +51,12 @@ pub fn inputReady(terminal: *Terminal) !bool {
     if (terminal.debug_input_fifo) |fifo| {
         return fifo.readableLength() > 0;
     } else {
+        // FIXME: hangs on windows due to an stdlib bug D:
+        // https://github.com/ziglang/zig/issues/22991
+        if (builtin.os.tag == .windows) {
+            return error.PollBrokenOnWindows;
+        }
+
         _ = try terminal.poller.pollTimeout(1);
         return terminal.poller.fifo(.stdin).readableLength() > 0;
     }
