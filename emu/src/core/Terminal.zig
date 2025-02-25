@@ -1,17 +1,17 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const Terminal = @This();
+const windows = @import("api/windows.zig");
 
-const DWord = std.os.windows.DWORD;
+const Terminal = @This();
 
 const OriginalTerminal = union {
     /// posix only
     termios: std.posix.termios,
     /// windows only
     mode: struct {
-        in: DWord,
-        out: DWord,
+        in: windows.DWORD,
+        out: windows.DWORD,
     },
 };
 
@@ -20,6 +20,8 @@ const PollKinds = enum { stdin };
 original: OriginalTerminal,
 poller: std.io.Poller(PollKinds),
 debug_input_fifo: ?std.fifo.LinearFifo(u8, .Dynamic),
+allocator: std.mem.Allocator,
+stdin_handle: windows.HANDLE,
 
 const InputByte = enum(u8) {
     up = 'i' + 0x80,
@@ -53,10 +55,36 @@ pub fn inputReady(terminal: *Terminal) !bool {
     } else {
         // NOTE: poll hangs on windows due to an stdlib bug
         // https://github.com/ziglang/zig/issues/22991
-
-        // workaround for poll
+        // workaround:
         if (builtin.os.tag == .windows) {
-            return _kbhit() != 0;
+            var event_count: windows.DWORD = undefined;
+            if (windows.GetNumberOfConsoleInputEvents(terminal.stdin_handle, &event_count) == 0)
+                return error.FailedToGetConsoleEventCount;
+
+            const input_records = try terminal.allocator.alloc(
+                windows.INPUT_RECORD,
+                event_count,
+            );
+            defer terminal.allocator.free(input_records);
+
+            var events_read: windows.DWORD = undefined;
+            if (windows.PeekConsoleInputA(
+                terminal.stdin_handle,
+                input_records.ptr,
+                event_count,
+                &events_read,
+            ) == 0)
+                return error.FailedToPeekConsoleEvents;
+
+            for (input_records[0..events_read]) |record| {
+                const event_kind: windows.EventKinds = @enumFromInt(record.EventType);
+
+                if (event_kind == .key_event) {
+                    const event = record.Event.KeyEvent;
+                    if (event.bKeyDown == 1)
+                        return true;
+                }
+            } else return false;
         }
 
         _ = try terminal.poller.pollTimeout(1);
@@ -144,6 +172,10 @@ fn readCharInner(terminal: *Terminal) !?u8 {
         if (terminal.debug_input_fifo) |*fifo| {
             return fifo.readItem().?; // can't be null due to the check in inputReady
         } else {
+            if (builtin.os.tag == .windows) {
+                // can't return error.EndOFStream because we checked if input is ready
+                return try std.io.getStdIn().reader().readByte();
+            }
             return terminal.poller.fifo(.stdin).readItem().?; // can't be null because we polled in inputReady
         }
     }
@@ -187,6 +219,11 @@ pub fn init(allocator: std.mem.Allocator, debug_mode: bool) !Terminal {
             .init(allocator)
         else
             null,
+        .allocator = allocator,
+        .stdin_handle = if (builtin.os.tag == .windows)
+            try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE)
+        else
+            undefined,
     };
 }
 
@@ -200,10 +237,10 @@ fn initWindows() !OriginalTerminal {
 
     const stdin_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
 
-    const enable_line_input: DWord = 0x2; // cooked input
-    const enable_echo_input: DWord = 0x4; // echo on input
-    const enable_insert_mode: DWord = 0x20; // typing a character shifts characters to the right over
-    const enable_virtual_terminal_input: DWord = 0x200; // VT input sequences
+    const enable_line_input: windows.DWORD = 0x2; // cooked input
+    const enable_echo_input: windows.DWORD = 0x4; // echo on input
+    const enable_insert_mode: windows.DWORD = 0x20; // typing a character shifts characters to the right over
+    const enable_virtual_terminal_input: windows.DWORD = 0x200; // VT input sequences
 
     try initWindowsConsoleMode(
         &result.mode.in,
@@ -214,9 +251,9 @@ fn initWindows() !OriginalTerminal {
 
     const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
 
-    const enable_processed_output: DWord = 0x1; // required for enable_virtual_terminal_processing
-    const enable_virtual_terminal_processing: DWord = 0x4; // enable VT output sequences
-    const disable_newline_auto_return: DWord = 0x8; // when enabled, disables automatic \r on \n (i think?)
+    const enable_processed_output: windows.DWORD = 0x1; // required for enable_virtual_terminal_processing
+    const enable_virtual_terminal_processing: windows.DWORD = 0x4; // enable VT output sequences
+    const disable_newline_auto_return: windows.DWORD = 0x8; // when enabled, disables automatic \r on \n (i think?)
 
     try initWindowsConsoleMode(
         &result.mode.out,
@@ -229,10 +266,10 @@ fn initWindows() !OriginalTerminal {
 }
 
 fn initWindowsConsoleMode(
-    original_mode: *DWord,
-    handle: *anyopaque,
-    enable_flags: []const DWord,
-    disable_flags: []const DWord,
+    original_mode: *windows.DWORD,
+    handle: windows.HANDLE,
+    enable_flags: []const windows.DWORD,
+    disable_flags: []const windows.DWORD,
 ) !void {
     if (std.os.windows.kernel32.GetConsoleMode(handle, original_mode) == 0) {
         return error.FailedToGetConsoleMode;
@@ -321,5 +358,3 @@ fn deinitPosix(terminal: Terminal) void {
     std.posix.tcsetattr(stdin_handle, .FLUSH, terminal.original.termios) catch
         std.debug.panic("Failed to reset termios\n", .{});
 }
-
-extern fn _kbhit() callconv(.winapi) c_int;
