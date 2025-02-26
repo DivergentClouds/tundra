@@ -57,34 +57,7 @@ pub fn inputReady(terminal: *Terminal) !bool {
         // https://github.com/ziglang/zig/issues/22991
         // workaround:
         if (builtin.os.tag == .windows) {
-            var event_count: windows.DWORD = undefined;
-            if (windows.GetNumberOfConsoleInputEvents(terminal.stdin_handle, &event_count) == 0)
-                return error.FailedToGetConsoleEventCount;
-
-            const input_records = try terminal.allocator.alloc(
-                windows.INPUT_RECORD,
-                event_count,
-            );
-            defer terminal.allocator.free(input_records);
-
-            var events_read: windows.DWORD = undefined;
-            if (windows.PeekConsoleInputA(
-                terminal.stdin_handle,
-                input_records.ptr,
-                event_count,
-                &events_read,
-            ) == 0)
-                return error.FailedToPeekConsoleEvents;
-
-            for (input_records[0..events_read]) |record| {
-                const event_kind: windows.EventKinds = @enumFromInt(record.EventType);
-
-                if (event_kind == .key_event) {
-                    const event = record.Event.KeyEvent;
-                    if (event.bKeyDown == 1)
-                        return true;
-                }
-            } else return false;
+            return std.os.windows.kernel32.WaitForSingleObject(terminal.stdin_handle, 0) == 0;
         }
 
         _ = try terminal.poller.pollTimeout(1);
@@ -173,8 +146,10 @@ fn readCharInner(terminal: *Terminal) !?u8 {
             return fifo.readItem().?; // can't be null due to the check in inputReady
         } else {
             if (builtin.os.tag == .windows) {
-                // can't return error.EndOFStream because we checked if input is ready
-                return try std.io.getStdIn().reader().readByte();
+                return std.io.getStdIn().reader().readByte() catch |err| switch (err) {
+                    error.EndOfStream => null, // if ^Z is pressed
+                    else => return err,
+                };
             }
             return terminal.poller.fifo(.stdin).readItem().?; // can't be null because we polled in inputReady
         }

@@ -212,9 +212,6 @@ pub fn doTick(
     memory: *Memory,
     terminal: *Terminal, // for checking keyboard interrupt
 ) !u16 {
-    //    std.debug.print("\tstart state = {}\r\n", .{cpu.instruction_state});
-    //std.debug.print("\tstart state = {} @ {x:0>4}\r\n", .{ cpu.instruction_state, cpu.registers.pc });
-
     switch (cpu.instruction_state) {
         .interrupt => |interrupt| {
             cpu.latest_interrupt_from = cpu.registers.pc;

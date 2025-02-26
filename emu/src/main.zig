@@ -66,7 +66,7 @@ const Core = struct {
         if (core.cpu.instruction_state == .fetch) {
             core.cpu.clock_counter +%= try core.cpu.doTick(&core.memory, &core.terminal);
         } else {
-            std.debug.panic("exepected fetch, got: {}", .{core.cpu.instruction_state});
+            return error.UnexpectedFetch;
         }
 
         while (core.cpu.instruction_state != .fetch and
@@ -187,10 +187,10 @@ fn interpret(rom: []const u8, allocator: std.mem.Allocator, storage: []const std
 
     if (debugging) {
 
-        // TODO:
+        // TODO: debugging enviornment
     } else {
         while (core.cpu.running) {
-            try core.step(debugging); // more readable than just passing `false`
+            try core.step(false);
 
             if (cleanup) break;
         }
