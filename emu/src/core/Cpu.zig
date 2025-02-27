@@ -34,8 +34,9 @@ pub const init: Cpu = .{
     .running = true,
 };
 
-/// 5 MHz
+// 5 MHz
 pub const cycles_per_second = 5 * 1_000_000;
+pub const ns_per_cycle = 200; // TODO: calculate based on cycles_per_second
 
 pub const Interrupts = packed struct(u16) {
     read_protection: bool = false,
@@ -205,6 +206,16 @@ pub const InstructionState = union(enum) {
     // memory is written here
     execute: InstructionWithData,
 };
+
+pub fn clockDelay(current_timestamp: *i128, cycles: u16) void {
+    var next_timestamp = std.time.nanoTimestamp();
+    while (current_timestamp.* + ns_per_cycle * cycles > next_timestamp) {
+        std.time.sleep(cycles); // this is more precise than just calling sleep once
+        next_timestamp = std.time.nanoTimestamp();
+    }
+
+    current_timestamp.* = next_timestamp;
+}
 
 /// returns the number of cycles the tick took
 pub fn doTick(

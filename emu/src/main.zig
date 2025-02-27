@@ -16,6 +16,7 @@ const Core = struct {
     memory: Memory,
     storage: Storage,
     terminal: Terminal,
+    timestamp: i128,
 
     allocator: std.mem.Allocator,
 
@@ -44,6 +45,7 @@ const Core = struct {
         core.memory = try .init(allocator, core.io);
 
         core.allocator = allocator;
+        core.timestamp = std.time.nanoTimestamp();
 
         return core;
     }
@@ -64,7 +66,9 @@ const Core = struct {
         const pre_fetch_pc = core.cpu.registers.pc;
         // fetch
         if (core.cpu.instruction_state == .fetch) {
-            core.cpu.clock_counter +%= try core.cpu.doTick(&core.memory, &core.terminal);
+            const clock_increment = try core.cpu.doTick(&core.memory, &core.terminal);
+            core.cpu.clock_counter +%= clock_increment;
+            Cpu.clockDelay(&core.timestamp, clock_increment);
         } else {
             return error.UnexpectedFetch;
         }
@@ -91,7 +95,9 @@ const Core = struct {
                     .fetch => {},
                 }
             }
-            core.cpu.clock_counter +%= try core.cpu.doTick(&core.memory, &core.terminal);
+            const clock_increment = try core.cpu.doTick(&core.memory, &core.terminal);
+            core.cpu.clock_counter +%= clock_increment;
+            Cpu.clockDelay(&core.timestamp, clock_increment);
         }
     }
 };
