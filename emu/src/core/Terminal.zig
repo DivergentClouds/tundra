@@ -104,19 +104,21 @@ pub fn readChar(terminal: *Terminal) !u16 {
                     };
                 }
 
-                if (sequence[0] == '[') {
-                    if (sequence.len == 3 and sequence[2] == '~') {
-                        opt_char = switch (sequence[1]) {
-                            '2' => .insert,
-                            '3' => .delete,
-                            else => null,
-                        };
-                    } else {
-                        opt_char = switch (sequence[1]) {
-                            'H' => .home,
-                            'F' => .end,
-                            else => null,
-                        };
+                if (opt_char == null) {
+                    if (sequence[0] == '[') {
+                        if (sequence.len == 3 and sequence[2] == '~') {
+                            opt_char = switch (sequence[1]) {
+                                '2' => .insert,
+                                '3' => .delete,
+                                else => null,
+                            };
+                        } else {
+                            opt_char = switch (sequence[1]) {
+                                'H' => .home,
+                                'F' => .end,
+                                else => null,
+                            };
+                        }
                     }
                 }
             }
