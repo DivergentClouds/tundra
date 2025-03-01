@@ -12,6 +12,12 @@ Terminal I/O uses the ASCII character set. Some bytes above 0x7F allow for
 manipulation of the terminal. Non-character keys on the keyboard are represented
 by bytes above 0x7F. Constants for terminal I/O are found in constants.txt.
 
+Cursor
+------
+MMIO.GET_CURSOR and MMIO.SET_CURSOR may be used to manipulate the position of
+the terminal's cursor. The lower 8 bits contain the cursor's X position, and
+the upper 8 bits contain the cursor's Y position.
+
 Terminal Input
 --------------
 |===============================|======|

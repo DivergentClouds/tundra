@@ -1,8 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const windows = @import("api/windows.zig");
-
 const Terminal = @This();
 
 const OriginalTerminal = union {
@@ -10,8 +8,8 @@ const OriginalTerminal = union {
     termios: std.posix.termios,
     /// windows only
     mode: struct {
-        in: windows.DWORD,
-        out: windows.DWORD,
+        in: std.os.windows.DWORD,
+        out: std.os.windows.DWORD,
     },
 };
 
@@ -21,7 +19,7 @@ original: OriginalTerminal,
 poller: std.io.Poller(PollKinds),
 debug_input_fifo: ?std.fifo.LinearFifo(u8, .Dynamic),
 allocator: std.mem.Allocator,
-stdin_handle: windows.HANDLE,
+stdin_handle: std.os.windows.HANDLE,
 
 const InputByte = enum(u8) {
     up = 'i' + 0x80,
@@ -57,10 +55,17 @@ pub fn inputReady(terminal: *Terminal) !bool {
         // https://github.com/ziglang/zig/issues/22991
         // workaround:
         if (builtin.os.tag == .windows) {
-            return std.os.windows.kernel32.WaitForSingleObject(terminal.stdin_handle, 0) == 0;
-        }
+            if (std.os.windows.kernel32.WaitForSingleObject(terminal.stdin_handle, 0) == 0) {
+                const char = std.io.getStdIn().reader().readByte() catch |err| switch (err) {
+                    error.EndOfStream => return false, // if ^Z is pressed
+                    else => return err,
+                };
 
-        _ = try terminal.poller.pollTimeout(1);
+                try terminal.poller.fifo(.stdin).writeItem(char);
+            }
+        } else {
+            _ = try terminal.poller.pollTimeout(1);
+        }
         return terminal.poller.fifo(.stdin).readableLength() > 0;
     }
 }
@@ -147,16 +152,76 @@ fn readCharInner(terminal: *Terminal) !?u8 {
         if (terminal.debug_input_fifo) |*fifo| {
             return fifo.readItem().?; // can't be null due to the check in inputReady
         } else {
-            if (builtin.os.tag == .windows) {
-                return std.io.getStdIn().reader().readByte() catch |err| switch (err) {
-                    error.EndOfStream => null, // if ^Z is pressed
-                    else => return err,
-                };
-            }
             return terminal.poller.fifo(.stdin).readItem().?; // can't be null because we polled in inputReady
         }
     }
     return null;
+}
+
+pub fn getCursorPosition(terminal: *Terminal) !u16 {
+    if (builtin.os.tag == .windows) {
+        var screen_buffer_info: std.os.windows.CONSOLE_SCREEN_BUFFER_INFO = undefined;
+
+        if (std.os.windows.kernel32.GetConsoleScreenBufferInfo(
+            terminal.stdin_handle,
+            &screen_buffer_info,
+        ) == 0)
+            return error.CouldNotGetConsoleScreenBufferInfo;
+
+        const row: u8 = @intCast(@min(screen_buffer_info.dwCursorPosition.Y, 255));
+        const column: u8 = @intCast(@min(screen_buffer_info.dwCursorPosition.X, 255));
+
+        return (@as(u16, row) << 8) | column;
+    } else {
+        const stdin_handle = std.io.getStdIn().handle;
+        const raw_termios = try std.posix.tcgetattr(stdin_handle);
+
+        var termios_no_reciever = raw_termios;
+
+        // prevent characters from being typed during this function
+        termios_no_reciever.cflag.CREAD = false;
+
+        try std.posix.tcsetattr(stdin_handle, .NOW, termios_no_reciever);
+        defer std.posix.tcsetattr(stdin_handle, .NOW, raw_termios) catch
+            std.debug.panic("failed to restore terminal reciever", .{});
+
+        // get all of stdin into the fifo
+        while (try terminal.inputReady()) {}
+
+        const stdout = std.io.getStdOut().writer();
+        try stdout.writeAll("\x1b6n"); // Device Status Report Cursor Position
+
+        var sequence: std.ArrayListUnmanaged(u8) = try .initCapacity(terminal.allocator, 16);
+
+        try std.io.getStdIn().reader().streamUntilDelimiter(
+            sequence.writer(terminal.allocator),
+            'R',
+            null,
+        );
+
+        if (!std.mem.startsWith(u8, sequence.items, "\x1b["))
+            return error.UnexpectedCharactersInCursorPositionSequence;
+
+        var iterator = std.mem.tokenizeScalar(u8, sequence.items[2..], ';');
+
+        const row_string = iterator.next() orelse
+            return error.CouldNotGetCursorRow;
+
+        const column_string = iterator.next() orelse
+            return error.CouldNotGetCursorColumn;
+
+        const row = try std.fmt.parseInt(u8, row_string, 10);
+        const column = try std.fmt.parseInt(u8, column_string, 10);
+
+        return (@as(u16, row) << 8) | column;
+    }
+}
+
+pub fn setCursorPosition(x: u8, y: u8) !void {
+    const stdout = std.io.getStdOut().writer();
+
+    // add 1 because 0 means default
+    try stdout.print("\x1b{d};{d}H", .{ @as(u16, y) + 1, @as(u16, x) + 1 });
 }
 
 pub fn writeChar(byte: u8) !void {
@@ -214,10 +279,10 @@ fn initWindows() !OriginalTerminal {
 
     const stdin_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE);
 
-    const enable_line_input: windows.DWORD = 0x2; // cooked input
-    const enable_echo_input: windows.DWORD = 0x4; // echo on input
-    const enable_insert_mode: windows.DWORD = 0x20; // typing a character shifts characters to the right over
-    const enable_virtual_terminal_input: windows.DWORD = 0x200; // VT input sequences
+    const enable_line_input: std.os.windows.DWORD = 0x2; // cooked input
+    const enable_echo_input: std.os.windows.DWORD = 0x4; // echo on input
+    const enable_insert_mode: std.os.windows.DWORD = 0x20; // typing a character shifts characters to the right over
+    const enable_virtual_terminal_input: std.os.windows.DWORD = 0x200; // VT input sequences
 
     try initWindowsConsoleMode(
         &result.mode.in,
@@ -228,9 +293,9 @@ fn initWindows() !OriginalTerminal {
 
     const stdout_handle = try std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE);
 
-    const enable_processed_output: windows.DWORD = 0x1; // required for enable_virtual_terminal_processing
-    const enable_virtual_terminal_processing: windows.DWORD = 0x4; // enable VT output sequences
-    const disable_newline_auto_return: windows.DWORD = 0x8; // when enabled, disables automatic \r on \n (i think?)
+    const enable_processed_output: std.os.windows.DWORD = 0x1; // required for enable_virtual_terminal_processing
+    const enable_virtual_terminal_processing: std.os.windows.DWORD = 0x4; // enable VT output sequences
+    const disable_newline_auto_return: std.os.windows.DWORD = 0x8; // when enabled, disables automatic \r on \n (i think?)
 
     try initWindowsConsoleMode(
         &result.mode.out,
@@ -243,10 +308,10 @@ fn initWindows() !OriginalTerminal {
 }
 
 fn initWindowsConsoleMode(
-    original_mode: *windows.DWORD,
-    handle: windows.HANDLE,
-    enable_flags: []const windows.DWORD,
-    disable_flags: []const windows.DWORD,
+    original_mode: *std.os.windows.DWORD,
+    handle: std.os.windows.HANDLE,
+    enable_flags: []const std.os.windows.DWORD,
+    disable_flags: []const std.os.windows.DWORD,
 ) !void {
     if (std.os.windows.kernel32.GetConsoleMode(handle, original_mode) == 0) {
         return error.FailedToGetConsoleMode;

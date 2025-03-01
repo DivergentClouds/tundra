@@ -13,25 +13,27 @@ terminal: *Terminal,
 
 pub const ReadPort = enum(u16) {
     read_terminal = 0xfff0,
-    storage_ready = 0xfff2,
-    storage_count = 0xfff4,
-    interrupt_handler = 0xfff5,
-    interrupt_from = 0xfff6,
-    interrupt_kind = 0xfff7,
-    enabled_interrupts = 0xfff8,
-    bank_map = 0xfff9,
+    get_cursor = 0xfff1,
+    storage_ready = 0xfff3,
+    storage_count = 0xfff5,
+    interrupt_handler = 0xfff6,
+    interrupt_from = 0xfff7,
+    interrupt_kind = 0xfff8,
+    enabled_interrupts = 0xfff9,
+    bank_map = 0xfffa,
     _,
 };
 
 pub const WritePort = enum(u16) {
     write_terminal = 0xfff0,
-    seek_storage = 0xfff1,
-    store_block = 0xfff2,
-    load_block = 0xfff3,
-    storage_index = 0xfff4,
-    interrupt_handler = 0xfff5,
-    enabled_interrupts = 0xfff8,
-    bank_map = 0xfff9,
+    set_cursor = 0xfff1,
+    seek_storage = 0xfff2,
+    store_block = 0xfff3,
+    load_block = 0xfff4,
+    storage_index = 0xfff5,
+    interrupt_handler = 0xfff6,
+    enabled_interrupts = 0xfff9,
+    bank_map = 0xfffa,
     halt = 0xffff,
     _,
 };
@@ -43,6 +45,7 @@ pub fn write(
 ) !void {
     switch (address) {
         .write_terminal => try Terminal.writeChar(@truncate(value)),
+        .set_cursor => try Terminal.setCursorPosition(@intCast(value & 0xff), @intCast(value >> 8)),
         .seek_storage => try io.storage.seek(value),
         .store_block => try io.storage.storeBlock(value, io.memory.*),
         .load_block => try io.storage.loadBlock(value, io.memory),
@@ -61,6 +64,7 @@ pub fn read(
 ) !u16 {
     return switch (address) {
         .read_terminal => try io.terminal.readChar(),
+        .get_cursor => try io.terminal.getCursorPosition(),
         .storage_ready => @intFromBool(io.storage.ready_delay[io.storage.device_index] == 0),
         .storage_count => io.storage.deviceCount(),
         .interrupt_handler => io.cpu.interrupt_handler,

@@ -22,6 +22,11 @@ If an MMIO address marked read/write has not been written to, it defaults to 0.
 Accessing storage mid-operation is prohibited and leads to undefined behavior.
 For more information on storage, see storage.txt.
 
+information about the types and effects of interrupts can be found in
+interrupts.txt.
+
+For details about the terminal, see terminal.txt.
+
 Invalid access of MMIO is prohibited and leads to undefined behavior.
 
 tundra-extra.inc includes constants for MMIO addresses. See constants.txt for
@@ -37,39 +42,45 @@ more information.
 | 0xfff0  | write      | write the lower byte of the given |
 |         |            | value to the terminal             |
 |---------|------------|-----------------------------------|
-| 0xfff1  | write      | seek to the given block index in  |
+| 0xfff1  | read       | get the position of the terminal  |
+|         |            | cursor                            |
+|---------|------------|-----------------------------------|
+| 0xfff1  | write      | set the position of the terminal  |
+|         |            | cursor                            |
+|---------|------------|-----------------------------------|
+| 0xfff2  | write      | seek to the given block index in  |
 |         |            | storage                           |
 |---------|------------|-----------------------------------|
-| 0xfff2  | read       | if storage is mid-operation, then | 
+| 0xfff3  | read       | if storage is mid-operation, then | 
 |         |            | read 0, otherwise read 1          |
 |---------|------------|-----------------------------------|
-| 0xfff2  | write      | write a block from memory         |
+| 0xfff3  | write      | write a block from memory         |
 |         |            | starting at the given address     |
 |         |            | into storage                      |
 |---------|------------|-----------------------------------|
-| 0xfff3  | write      | read a block from storage into    |
+| 0xfff4  | write      | read a block from storage into    |
 |         |            | memory starting at the given      |
 |         |            | address                           |
 |---------|------------|-----------------------------------|
-| 0xfff4  | read       | read the number of attached       |
+| 0xfff5  | read       | read the number of attached       |
 |         |            | storage devices                   |
 |---------|------------|-----------------------------------|
-| 0xfff4  | write      | set which storage device to       |
+| 0xfff5  | write      | set which storage device to       |
 |         |            | access, 0-indexed                 |
 |---------|------------|-----------------------------------|
-| 0xfff5  | read/write | holds the interrupt handler       |
+| 0xfff6  | read/write | holds the interrupt handler       |
 |         |            | address                           |
 |---------|------------|-----------------------------------|
-| 0xfff6  | read       | read the value of PC at the time  |
+| 0xfff7  | read       | read the value of PC at the time  |
 |         |            | of the most recent interrupt      |
 |---------|------------|-----------------------------------|
-| 0xfff7  | read       | read the id of the most recent    |
+| 0xfff8  | read       | read the id of the most recent    |
 |         |            | interrupt, defaults to 0          |
 |---------|------------|-----------------------------------|
-| 0xfff8  | read/write | holds a bitfield containing what  |
+| 0xfff9  | read/write | holds a bitfield containing what  |
 |         |            | kinds of interrupts are enabled   | 
 |---------|------------|-----------------------------------|
-| 0xfff9  | read/write | holds a bitfield specifying which |
+| 0xfffa  | read/write | holds a bitfield specifying which |
 |         |            | bank is mapped to each region     |
 |---------|------------|-----------------------------------|
 | 0xffff  | write      | halt execution                    |

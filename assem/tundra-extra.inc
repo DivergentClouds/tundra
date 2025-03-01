@@ -18,20 +18,22 @@ include 'tundra-core.inc'
 
 virtual at 0xfff0
   mmio?:
-  .read_term? = 0xfff0
-  .write_term? = 0xfff0
-  .terminal? = 0xfff0
-  .seek_storage? = 0xfff1
-  .storage_ready? = 0xfff2
-  .store_block? = 0xfff2
-  .load_block? = 0xfff3
-  .storage_count? = 0xfff4
-  .storage_index? = 0xfff4
-  .int_handler? = 0xfff5
-  .int_from? = 0xfff6
-  .int_kind? = 0xfff7
-  .enabled_ints? = 0xfff8
-  .bank_map? = 0xfff9
+  .char_in? = 0xfff0
+  .char_out? = 0xfff0
+  .char_io? = 0xfff0
+  .get_cursor = 0xfff1
+  .set_cursor = 0xfff1
+  .seek_storage? = 0xfff2
+  .storage_ready? = 0xfff3
+  .store_block? = 0xfff3
+  .load_block? = 0xfff4
+  .storage_count? = 0xfff5
+  .storage_index? = 0xfff5
+  .int_handler? = 0xfff6
+  .int_from? = 0xfff7
+  .int_kind? = 0xfff8
+  .enabled_ints? = 0xfff9
+  .bank_map? = 0xfffa
   .halt? = 0xffff
 end virtual
 
