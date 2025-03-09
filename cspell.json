@@ -1,11 +1,8 @@
 {
   "flagWords": [],
   "ignoreWords": [
-    "fasmg",
-    "disassem",
     "Doptimize",
     "tundis",
-    "INTS"
   ],
   "ignoreRegExpList": [
     "/[A-Z][A-Z]+/"
@@ -13,9 +10,8 @@
   "language": "en",
   "version": "0.2",
   "words": [
-    "MMIO",
-    "MOVI",
     "bitfield",
+    "disassem",
     "fasmg",
     "remappable"
   ]
