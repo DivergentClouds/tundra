@@ -1,13 +1,4 @@
 {
-  "dictionaries": [
-    "tundra"
-  ],
-  "dictionaryDefinitions": [
-    {
-      "name": "tundra",
-      "path": "cspell.txt"
-    }
-  ],
   "flagWords": [],
   "ignoreWords": [
     "Doptimize",
@@ -17,5 +8,10 @@
     "/[A-Z][A-Z]+/"
   ],
   "language": "en",
-  "words": []
+  "words": [
+    "bitfield",
+    "disassem",
+    "fasmg",
+    "remappable"
+  ]
 }
