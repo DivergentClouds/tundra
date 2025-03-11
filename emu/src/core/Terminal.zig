@@ -182,8 +182,8 @@ pub fn getCursorPosition(terminal: *Terminal) !u16 {
         termios_no_reciever.cflag.CREAD = false;
 
         try std.posix.tcsetattr(stdin_handle, .NOW, termios_no_reciever);
-        defer std.posix.tcsetattr(stdin_handle, .NOW, raw_termios) catch
-            std.debug.panic("failed to restore terminal reciever", .{});
+        defer std.posix.tcsetattr(stdin_handle, .NOW, raw_termios) catch |err|
+            std.debug.panic("failed to restore terminal reciever: {s}\n", .{@errorName(err)});
 
         // get all of stdin into the fifo
         while (try terminal.inputReady()) {}
@@ -376,10 +376,10 @@ pub fn deinit(terminal: *Terminal) void {
 
 fn deinitWindows(terminal: Terminal) void {
     // TODO: is this function needed?
-    const stdin_handle = std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE) catch
-        std.debug.panic("failed to get stdin handle on deinit", .{});
-    const stdout_handle = std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE) catch
-        std.debug.panic("failed to get stdin handle on deinit", .{});
+    const stdin_handle = std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE) catch |err|
+        std.debug.panic("failed to get stdin handle on deinit: {s}\n", .{@errorName(err)});
+    const stdout_handle = std.os.windows.GetStdHandle(std.os.windows.STD_OUTPUT_HANDLE) catch |err|
+        std.debug.panic("failed to get stdin handle on deinit: {s}\n", .{@errorName(err)});
 
     var success = std.os.windows.kernel32.SetConsoleMode(
         stdin_handle,
@@ -397,6 +397,6 @@ fn deinitWindows(terminal: Terminal) void {
 
 fn deinitPosix(terminal: Terminal) void {
     const stdin_handle = std.io.getStdIn().handle;
-    std.posix.tcsetattr(stdin_handle, .FLUSH, terminal.original.termios) catch
-        std.debug.panic("Failed to reset termios\n", .{});
+    std.posix.tcsetattr(stdin_handle, .FLUSH, terminal.original.termios) catch |err|
+        std.debug.panic("Failed to reset termios: {s}\n", .{@errorName(err)});
 }
