@@ -85,7 +85,7 @@ const Opcode = enum(u3) {
     xor,
 };
 
-const RegisterKind = enum(u2) {
+pub const RegisterKind = enum(u2) {
     a,
     b,
     c,
