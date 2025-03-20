@@ -20,6 +20,7 @@ Stack Constants
 
 MMIO Addresses
 --------------
+  ; the first address in MMIO
   MMIO = 0xFFF0
 
   ; read
