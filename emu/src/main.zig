@@ -6,6 +6,7 @@ const Io = @import("core/Io.zig");
 const Memory = @import("core/Memory.zig");
 const Storage = @import("core/Storage.zig");
 const Terminal = @import("core/Terminal.zig");
+const debug = @import("debug.zig");
 
 /// set by signal handler when SIGINT is received
 var cleanup = false;
@@ -131,7 +132,6 @@ pub fn main() !void {
     while (args.next()) |arg| {
         if (std.mem.eql(u8, arg, "-s")) {
             // storage
-
             const next_arg = args.next() orelse
                 return error.NoStorageFileGiven;
 
@@ -173,7 +173,12 @@ pub fn main() !void {
     }
 }
 
-fn interpret(rom: []const u8, allocator: std.mem.Allocator, storage: []const std.fs.File, debugging: bool) !void {
+fn interpret(
+    rom: []const u8,
+    allocator: std.mem.Allocator,
+    storage: []const std.fs.File,
+    debugging: bool,
+) !void {
     var core: *Core = try .init(allocator, storage, debugging);
     defer core.deinit();
 
@@ -191,11 +196,12 @@ fn interpret(rom: []const u8, allocator: std.mem.Allocator, storage: []const std
 
     try core.memory.writeRom(rom);
 
-    if (debugging) {
-
-        // TODO: debugging enviornment
-    } else {
-        while (core.cpu.running) {
+    while (core.cpu.running) {
+        if (debugging) {
+            const command: debug.Command = try .getCommand(&core.terminal, allocator);
+            _ = command;
+            // TODO: debugging enviornment
+        } else {
             try core.step(false);
 
             if (cleanup) break;
