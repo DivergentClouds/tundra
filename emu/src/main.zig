@@ -203,9 +203,9 @@ fn interpret(
             // TODO: debugging enviornment
         } else {
             try core.step(false);
-
-            if (cleanup) break;
         }
+
+        if (cleanup) break;
     }
 }
 
