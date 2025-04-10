@@ -13,7 +13,7 @@ Assembled Tundra programs may be run with the Tundra emulator.
 
 Compiling
 ---------
-The Tundra emulator may be compiled with the Zig master branch.
+The Tundra emulator may be compiled with Zig 0.14.0.
 
   cd emu
   zig build -Doptimize=ReleaseSafe
@@ -40,7 +40,7 @@ Assembled Tundra programs may be disassembled with the Tundra disassembler.
 
 Compiling
 ---------
-The Tundra disassembler may be compiled with the Zig master branch.
+The Tundra disassembler may be compiled with Zig 0.14.0.
 
   cd disassem
   zig build -Doptimize=ReleaseSafe

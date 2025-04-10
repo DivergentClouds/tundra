@@ -247,13 +247,8 @@ pub fn writeChar(byte: u8) !void {
 }
 
 pub fn init(allocator: std.mem.Allocator, debug_mode: bool) !Terminal {
-    const original_terminal = if (builtin.os.tag == .windows)
-        try initWindows()
-    else
-        try initPosix();
-
     return Terminal{
-        .original = original_terminal,
+        .original = try uncook(),
         .poller = std.io.poll(allocator, PollKinds, .{
             .stdin = std.io.getStdIn(),
         }),
@@ -269,7 +264,14 @@ pub fn init(allocator: std.mem.Allocator, debug_mode: bool) !Terminal {
     };
 }
 
-fn initWindows() !OriginalTerminal {
+pub fn uncook() !OriginalTerminal {
+    return if (builtin.os.tag == .windows)
+        try uncookWindows()
+    else
+        try uncookPosix();
+}
+
+fn uncookWindows() !OriginalTerminal {
     var result: OriginalTerminal = .{
         .mode = .{
             .in = undefined,
@@ -332,7 +334,7 @@ fn initWindowsConsoleMode(
     }
 }
 
-fn initPosix() !OriginalTerminal {
+fn uncookPosix() !OriginalTerminal {
     const stdin_handle = std.io.getStdIn().handle;
     const original_termios = try std.posix.tcgetattr(stdin_handle);
 
@@ -367,14 +369,18 @@ pub fn deinit(terminal: *Terminal) void {
 
     terminal.poller.deinit();
 
+    terminal.cook();
+}
+
+pub fn cook(terminal: Terminal) void {
     if (builtin.os.tag == .windows) {
-        terminal.deinitWindows();
+        terminal.cookWindows();
     } else {
-        terminal.deinitPosix();
+        terminal.cookPosix();
     }
 }
 
-fn deinitWindows(terminal: Terminal) void {
+fn cookWindows(terminal: Terminal) void {
     // TODO: is this function needed?
     const stdin_handle = std.os.windows.GetStdHandle(std.os.windows.STD_INPUT_HANDLE) catch |err|
         std.debug.panic("failed to get stdin handle on deinit: {s}\n", .{@errorName(err)});
@@ -395,7 +401,7 @@ fn deinitWindows(terminal: Terminal) void {
         std.debug.panic("Failed to reset terminal settings\n", .{});
 }
 
-fn deinitPosix(terminal: Terminal) void {
+fn cookPosix(terminal: Terminal) void {
     const stdin_handle = std.io.getStdIn().handle;
     std.posix.tcsetattr(stdin_handle, .FLUSH, terminal.original.termios) catch |err|
         std.debug.panic("Failed to reset termios: {s}\n", .{@errorName(err)});

@@ -119,7 +119,7 @@ const Instruction = packed struct(u8) {
     }
 };
 
-const Registers = struct {
+pub const Registers = struct {
     a: u16 = 0,
     b: u16 = 0,
     c: u16 = 0,
@@ -132,7 +132,38 @@ const Registers = struct {
         .pc = 0,
     };
 
-    fn get(
+    pub fn format(
+        registers: Registers,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: std.io.AnyWriter,
+    ) !void {
+        if (fmt.len == 0) {
+            try writer.print("a = ", .{});
+            try std.fmt.formatIntValue(registers.a, "x", options, writer);
+
+            try writer.print(", b = ", .{});
+            try std.fmt.formatIntValue(registers.b, "x", options, writer);
+
+            try writer.print(", c = ", .{});
+            try std.fmt.formatIntValue(registers.c, "x", options, writer);
+
+            try writer.print("d = ", .{});
+            try std.fmt.formatIntValue(registers.pc, "x", options, writer);
+        } else if (comptime std.mem.eql(u8, fmt, "a")) {
+            try std.fmt.formatIntValue(registers.a, "x", options, writer);
+        } else if (comptime std.mem.eql(u8, fmt, "b")) {
+            try std.fmt.formatIntValue(registers.b, "x", options, writer);
+        } else if (comptime std.mem.eql(u8, fmt, "c")) {
+            try std.fmt.formatIntValue(registers.c, "x", options, writer);
+        } else if (comptime std.mem.eql(u8, fmt, "pc")) {
+            try std.fmt.formatIntValue(registers.pc, "x", options, writer);
+        } else {
+            std.fmt.invalidFmtError(fmt, registers);
+        }
+    }
+
+    pub fn get(
         registers: Registers,
         register: RegisterKind,
     ) u16 {
@@ -151,23 +182,28 @@ const Registers = struct {
         jump: bool,
         cpu: *Cpu,
     ) Interrupts {
+        if (register == .pc) {
+            if (cpu.cmp_flag and jump) {
+                cpu.cmp_flag = false;
+            } else {
+                const interrupt = checkPermissionInterrupt(cpu.*, value, .execute);
+                if (interrupt != Interrupts{}) {
+                    return interrupt;
+                }
+                cpu.registers.pc = value;
+            }
+        } else setNoCheck(register, value, cpu);
+
+        return Interrupts{};
+    }
+
+    pub fn setNoCheck(register: RegisterKind, value: u16, cpu: *Cpu) void {
         switch (register) {
             .a => cpu.registers.a = value,
             .b => cpu.registers.b = value,
             .c => cpu.registers.c = value,
-            .pc => {
-                if (cpu.cmp_flag and jump) {
-                    cpu.cmp_flag = false;
-                } else {
-                    const interrupt = checkPermissionInterrupt(cpu.*, value, .execute);
-                    if (interrupt != Interrupts{}) {
-                        return interrupt;
-                    }
-                    cpu.registers.pc = value;
-                }
-            },
+            .pc => cpu.registers.pc = value,
         }
-        return Interrupts{};
     }
 };
 

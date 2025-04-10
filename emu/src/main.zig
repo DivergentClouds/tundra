@@ -6,12 +6,13 @@ const Io = @import("core/Io.zig");
 const Memory = @import("core/Memory.zig");
 const Storage = @import("core/Storage.zig");
 const Terminal = @import("core/Terminal.zig");
-const debug = @import("debug.zig");
+
+const Debug = @import("Debug.zig");
 
 /// set by signal handler when SIGINT is received
 var cleanup = false;
 
-const Core = struct {
+pub const Core = struct {
     cpu: Cpu,
     io: Io,
     memory: Memory,
@@ -24,7 +25,7 @@ const Core = struct {
     fn init(
         allocator: std.mem.Allocator,
         storage_files: []const std.fs.File,
-        debugging: bool,
+        debug_mode: bool,
     ) !*Core {
         var core = try allocator.create(Core);
 
@@ -33,7 +34,7 @@ const Core = struct {
         core.storage = try .init(allocator, storage_files);
         errdefer core.storage.deinit();
 
-        core.terminal = try .init(allocator, debugging);
+        core.terminal = try .init(allocator, debug_mode);
         errdefer core.terminal.deinit();
 
         core.io = .{
@@ -60,12 +61,12 @@ const Core = struct {
     }
 
     /// does 1 instruction
-    fn step(core: *Core, debug_print: bool) !void {
+    pub fn step(core: *Core, debug_print: bool) !void {
         if (core.cpu.instruction_state != .fetch)
             return error.InvalidStartOfStep;
 
         const pre_fetch_pc = core.cpu.registers.pc;
-        // fetch
+
         if (core.cpu.instruction_state == .fetch) {
             const clock_increment = try core.cpu.doTick(&core.memory, &core.terminal);
             core.cpu.clock_counter +%= clock_increment;
@@ -170,6 +171,8 @@ pub fn main() !void {
         }
 
         try interpret(rom, allocator, storage_files, debugging);
+    } else {
+        return error.NoRomSpecified;
     }
 }
 
@@ -196,16 +199,26 @@ fn interpret(
 
     try core.memory.writeRom(rom);
 
-    while (core.cpu.running) {
+    // fine to init when not debugging, as this only happens once and the performance hit is minimal
+    var debug: Debug = .init(core, &cleanup, allocator);
+    defer debug.deinit();
+
+    while (core.cpu.running and !cleanup) {
         if (debugging) {
-            const command: debug.Command = try .getCommand(&core.terminal, allocator);
-            _ = command;
+            if (true)
+                return error.DebuggerNotImplimented;
+            // uncooked again in Debug.step
+            core.terminal.cook();
+
             // TODO: debugging enviornment
+
+            const command: Debug.Command = try .parse(allocator);
+            defer command.deinit(allocator);
+
+            try debug.execute(command);
         } else {
             try core.step(false);
         }
-
-        if (cleanup) break;
     }
 }
 

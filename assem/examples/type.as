@@ -1,6 +1,6 @@
 include '../tundra-extra.inc'
 
-movi a, mmio.terminal
+movi a, mmio.char_io
 
 
 loop:
