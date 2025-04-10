@@ -18,20 +18,33 @@ include 'tundra-core.inc'
 
 virtual at 0xfff0
   mmio?:
-  .read_char? = 0xfff0
-  .write_char? = 0xfff1
-  .block_index? = 0xfff2
-  .write_storage? = 0xfff3
-  .read_storage? = 0xfff4
+  .char_in? = 0xfff0
+  .char_out? = 0xfff0
+  .char_io? = 0xfff0
+  .get_cursor? = 0xfff1
+  .set_cursor? = 0xfff1
+  .cursor? = 0xfff1
+  .seek_storage? = 0xfff2
+  .storage_ready? = 0xfff3
+  .store_block? = 0xfff3
+  .load_block? = 0xfff4
   .storage_count? = 0xfff5
-  .storage_index? = 0xfff6
-  .zero_storage? = 0xfff7
-  .boundary_address? = 0xfff8
-  .interrupt_address? = 0xfff9
-  .previous_interrupt? = 0xfffa
+  .storage_index? = 0xfff5
+  .storage_device? = 0xfff5
+  .int_handler? = 0xfff6
+  .int_from? = 0xfff7
+  .int_kind? = 0xfff8
+  .enabled_ints? = 0xfff9
+  .bank_map? = 0xfffa
   .halt? = 0xffff
 end virtual
 
+int?:
+  .read_protect? = 0x01
+  .write_protect? = 0x02
+  .exec_protect? = 0x04
+  .timer? = 0x08
+  .keyboard? = 0x10
 
 char?:
   .lf? = 0x0a           ; IN/OUT
@@ -53,7 +66,8 @@ char?:
   .clear_all? = 0xd8    ; OUT
   .to_origin? = 0xc8    ; OUT
 
-stack_base? = 0xFFEF
+; top of region 3, so is not caught by memory protection
+stack_base? = 0xbffe
 
 ; for internal use, makes sure a valid register is given
 macro internal_assert_not_reg? reg1, reg2
@@ -703,7 +717,7 @@ macro calli? imm
   local ret_addr
 
   pushi ret_addr
-  jmpi imm
+  jabsi imm
   ret_addr:
 end macro
 

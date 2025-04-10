@@ -9,12 +9,14 @@ Macros
 Overview
 --------
 tundra-extra.inc includes tundra-core.inc along with some macros and constants.
-for information on constants defined in tundra-extra.inc, see constants.txt.
-the signature of a macro contains additional information on what may be passed
+For information on constants defined in tundra-extra.inc, see constants.txt.
+
+The signature of a macro contains additional information on what may be passed
 to it. 'src' marks a register that may be dereferenced, 'dest' marks a register
-that may not be dereferenced, and 'imm' marks a 16-bit immediate. note that
-'src' may not be '*pc' and 'dest' may not be 'pc'. registers marked 'dest' may
-be modified by the macro.
+that may not be dereferenced, and 'imm' marks a 16-bit immediate.
+
+Note that registers marked 'dest' may be modified by the macro. In addition, PC
+may not be passed to 'dest' and '*PC' may not be passed to src.
 
 Bitwise Macros
 --------------
@@ -58,7 +60,7 @@ Arithmetic Macros
 
 Jump Macros
 -----------
-all jump macros respect the result of CMP. all immediate jump macros except for
+All jump macros respect the result of CMP. All immediate jump macros except for
 JABSI require that the target location is within the program, in case of
 relocation.
 
@@ -189,7 +191,7 @@ STACK_INIT must be called before any stack or function macros.
 Function Macros
 ---------------
 STACK_INIT must be called before any stack or function macros. CRELI is the
-only calling function macro that respects relocation. all function macros
+only calling function macro that respects relocation. All function macros
 assert that PC is mutable.
 
   ; call src

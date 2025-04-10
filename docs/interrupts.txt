@@ -1,0 +1,38 @@
+==========
+= Tundra =
+==========
+
+
+Interrupts
+==========
+
+Enabling Interrupts
+-------------------
+MMIO.ENABLED_INTS holds a bitfield containing the ids of interrupts that are
+enabled. If a non-protection interrupt would trigger mid-instruction, it
+instead triggers after the instruction. Interrupts will never trigger when the
+program counter is in memory region 4. For more information on memory regions,
+see banking.txt.
+
+Interrupt Kinds
+---------------
+|======|===================|===================================================|
+| id   | name              | trigger                                           |
+|======|===================|===================================================|
+| 0x01 | read protection   | trigger interrupt when code in memory regions 0-3 |
+|      |                   | attempts to read from memory region 4             |
+|------|-------------------|---------------------------------------------------|
+| 0x02 | write protection  | trigger interrupt when code in memory regions 0-3 |
+|      |                   | attempts to write to memory region 4              |
+|------|-------------------|---------------------------------------------------|
+| 0x04 | execution         | trigger interrupt when code in memory regions 0-3 |
+|      | protection        | attempts to set the program counter to an address |
+|      |                   | in memory region 4                                |
+|------|-------------------|---------------------------------------------------|
+| 0x08 | timer             | trigger interrupt when the internal cpu cycle     |
+|      |                   | counter overflows (roughly 76 times per second)   |
+|------|-------------------|---------------------------------------------------|
+| 0x10 | keyboard          | trigger interrupt when a key on the keyboard is   |
+|      |                   | pressed                                           |
+|------|-------------------|---------------------------------------------------|
+

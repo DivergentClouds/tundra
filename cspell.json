@@ -1,0 +1,17 @@
+{
+  "flagWords": [],
+  "ignoreWords": [
+    "Doptimize",
+    "tundis"
+  ],
+  "ignoreRegExpList": [
+    "/[A-Z][A-Z]+/"
+  ],
+  "language": "en",
+  "words": [
+    "bitfield",
+    "disassem",
+    "fasmg",
+    "remappable"
+  ]
+}

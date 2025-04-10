@@ -1,0 +1,60 @@
+==========
+= Tundra =
+==========
+
+
+CPU
+===
+
+Clock
+-----
+The CPU has a clock speed of 5 MHz. On every clock cycle, if the program
+counter is not in memory region 4, an internal cycle counter increments.
+If timer interrupts are enabled, when the cycle counter overflows, trigger an
+interrupt. For more information on interrupts, see interrupts.txt.
+
+Registers
+---------
+Tundra has 4 16-bit registers, the first 3 of which are general purpose. Each
+register has an id, which is used to represent it in machine code. Numbers in
+the following diagram are in binary.
+
+  A  = 00
+  B  = 01
+  C  = 10
+  PC = 11
+
+PC is incremented by 1 immediately after an instruction is fetched.
+
+Dereferencing
+-------------
+Registers in the source position of an instruction may be dereferenced.
+Dereferencing a register will read the little-endian 16-bit value from memory at
+the address contained in the register. Dereferencing the program counter will
+increment it by 2. This happens after memory is read, but before the instruction
+is executed.
+
+Instruction Format
+------------------
+Each instruction is a single byte. The binary format of each instruction is as
+follows.
+
+  OOO WW D RR
+
+Where O is the opcode, W is the destination register, R is the source register,
+and D denotes whether the source register is dereferenced.
+
+Opcodes
+-------
+The following diagram specifies the binary id of each opcode.
+
+MOV = 000
+STO = 001
+ADD = 010
+CMP = 011
+ROT = 100
+AND = 101
+NOR = 110
+XOR = 111
+
+For information on the function of each opcode, see assembly.txt.

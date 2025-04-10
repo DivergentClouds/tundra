@@ -13,24 +13,26 @@ Assembled Tundra programs may be run with the Tundra emulator.
 
 Compiling
 ---------
-The Tundra emulator may be compiled with the Zig master branch.
+The Tundra emulator may be compiled with Zig 0.14.0.
 
   cd emu
   zig build -Doptimize=ReleaseSafe
 
 Usage
 -----
-  tundra <memory_file> [[-s storage_file] ...] [-d]
+  tundra <rom_file> [[-s storage_file] ...] [-d]
 
 Usage Notes
 -----------
-- if the '-d' flag is set, each instruction will be printed as it is run
+- if the '-d' flag is set, debug mode will be activated
+  - debug mode is not currently implimented
+- rom files may be at most 12 KiB
 
 Assembler
 =========
 
 Tundra assembly files may be assembled with fasmg (https://flatassembler.net/).
-see docs/assembly.txt for more information.
+See docs/assembly.txt for more information.
 
 Disassembler
 ============
@@ -39,7 +41,7 @@ Assembled Tundra programs may be disassembled with the Tundra disassembler.
 
 Compiling
 ---------
-The Tundra disassembler may be compiled with the Zig master branch.
+The Tundra disassembler may be compiled with Zig 0.14.0.
 
   cd disassem
   zig build -Doptimize=ReleaseSafe
