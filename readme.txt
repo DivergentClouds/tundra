@@ -25,7 +25,7 @@ Usage
 Usage Notes
 -----------
 - if the '-d' flag is set, debug mode will be activated
-  - debug mode is not currently implimented
+  - debug mode is not currently implemented
 - rom files may be at most 12 KiB
 
 Assembler
