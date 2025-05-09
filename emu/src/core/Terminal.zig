@@ -55,13 +55,13 @@ pub fn inputReady(terminal: *Terminal) !bool {
         // https://github.com/ziglang/zig/issues/22991
         // workaround:
         if (builtin.os.tag == .windows) {
-            if (std.os.windows.kernel32.WaitForSingleObject(terminal.stdin_handle, 0) == 0) {
-                const char = std.io.getStdIn().reader().readByte() catch |err| switch (err) {
-                    error.EndOfStream => return false, // if ^Z is pressed
-                    else => return err,
-                };
+            const stdin = std.io.getStdIn().reader();
+            var buffer: [512]u8 = undefined;
 
-                try terminal.poller.fifo(.stdin).writeItem(char);
+            if (std.os.windows.kernel32.WaitForSingleObject(terminal.stdin_handle, 0) == 0) {
+                const length = try stdin.read(&buffer);
+
+                try terminal.poller.fifo(.stdin).write(buffer[0..length]);
             }
         } else {
             _ = try terminal.poller.pollTimeout(1);
