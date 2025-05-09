@@ -45,8 +45,8 @@ Instructions
 |               | attempt to modify PC, otherwise, allow it    |
 |---------------|----------------------------------------------|
 | ROT dest, src | set dest to dest rotated by src bits, if src |
-|               | is positive, then rotate right, otherwise    |
-|               | rotate left                                  |
+|               | is positive, then rotate left, otherwise     |
+|               | rotate right                                 |
 |---------------|----------------------------------------------|
 | AND dest, src | set dest to dest & src                       |
 |---------------|----------------------------------------------|

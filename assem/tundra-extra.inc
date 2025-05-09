@@ -104,7 +104,7 @@ macro ori? dest, imm
   not dest
 end macro
 
-macro rotri dest, imm
+macro rotli dest, imm
   internal_assert_not_reg dest, pc
 
   assert imm > 0 & imm < 16
@@ -112,7 +112,7 @@ macro rotri dest, imm
   roti dest, imm
 end macro
 
-macro rotli dest, imm
+macro rotri dest, imm
   internal_assert_not_reg dest, pc
 
   assert imm > 0 & imm < 16

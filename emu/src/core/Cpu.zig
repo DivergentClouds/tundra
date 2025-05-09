@@ -428,7 +428,7 @@ fn execute(
             }
         },
         .rot => {
-            const rotated_dest_data = std.math.rotr(
+            const rotated_dest_data = std.math.rotl(
                 u16,
                 dest_data,
                 src_data,
