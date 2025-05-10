@@ -33,6 +33,8 @@ pub const init: Cpu = .{
     .clock_counter = 0,
     .previous_clock_counter = 0,
 
+    .keyboard_clock_counter = 0,
+
     .running = true,
 };
 
