@@ -30,9 +30,9 @@ Interrupt Kinds
 |      |                   | in memory region 4                                |
 |------|-------------------|---------------------------------------------------|
 | 0x08 | timer             | trigger interrupt when the internal cpu cycle     |
-|      |                   | counter overflows (roughly 76 times per second)   |
+|      |                   | counter overflows (roughly 76 Hz)                 |
 |------|-------------------|---------------------------------------------------|
 | 0x10 | keyboard          | trigger interrupt when a key on the keyboard is   |
-|      |                   | pressed                                           |
+|      |                   | pressed, the keyboard is polled at 100 Hz.        |
 |------|-------------------|---------------------------------------------------|
 

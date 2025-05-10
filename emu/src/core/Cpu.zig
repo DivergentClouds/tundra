@@ -15,6 +15,8 @@ cmp_flag: bool,
 clock_counter: u16,
 previous_clock_counter: u16,
 
+keyboard_clock_counter: u16,
+
 /// informational, checked by main interpreter loop
 running: bool,
 
@@ -37,6 +39,9 @@ pub const init: Cpu = .{
 // 5 MHz
 pub const cycles_per_second = 5 * 1_000_000;
 pub const ns_per_cycle = std.time.ns_per_s / cycles_per_second;
+
+const keyboard_interrupts_per_second = 100;
+const cycles_per_keyboard_interrupt = cycles_per_second / keyboard_interrupts_per_second;
 
 pub const Interrupts = packed struct(u16) {
     read_protection: bool = false,
@@ -515,9 +520,16 @@ fn checkAsyncInterrupt(cpu: *Cpu, terminal: *Terminal) !Interrupts {
 
     defer cpu.previous_clock_counter = cpu.clock_counter;
 
-    if (cpu.enabled_interrupts.timer and cpu.clock_counter < cpu.previous_clock_counter) {
+    // clock interrupt on clock_counter overflow
+    if (cpu.enabled_interrupts.timer and
+        cpu.clock_counter < cpu.previous_clock_counter)
+    {
         return Interrupts{ .timer = true };
-    } else if (cpu.enabled_interrupts.keyboard and try terminal.inputReady()) {
+    } else if (cpu.enabled_interrupts.keyboard and
+        cpu.keyboard_clock_counter >= cycles_per_keyboard_interrupt and
+        try terminal.inputReady())
+    {
+        cpu.keyboard_clock_counter = 0;
         return Interrupts{ .keyboard = true };
     }
 
