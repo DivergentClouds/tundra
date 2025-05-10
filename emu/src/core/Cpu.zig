@@ -36,7 +36,7 @@ pub const init: Cpu = .{
 
 // 5 MHz
 pub const cycles_per_second = 5 * 1_000_000;
-pub const ns_per_cycle = 200; // TODO: calculate based on cycles_per_second
+pub const ns_per_cycle = std.time.ns_per_s / cycles_per_second;
 
 pub const Interrupts = packed struct(u16) {
     read_protection: bool = false,
