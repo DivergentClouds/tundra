@@ -126,16 +126,33 @@ const Instruction = packed struct(u8) {
     }
 };
 
+const RegisterMode = enum {
+    primary,
+    secondary,
+};
+
+const RegisterContents = struct {
+    mode: RegisterMode,
+    primary: u16,
+    secondary: u16,
+
+    const init: RegisterContents = .{
+        .mode = .primary,
+        .primary = 0,
+        .secondary = 0,
+    };
+};
+
 pub const Registers = struct {
-    a: u16 = 0,
-    b: u16 = 0,
-    c: u16 = 0,
+    a: RegisterContents,
+    b: RegisterContents,
+    c: RegisterContents,
     pc: u16 = 0,
 
     const init: Registers = .{
-        .a = 0,
-        .b = 0,
-        .c = 0,
+        .a = .init,
+        .b = .init,
+        .c = .init,
         .pc = 0,
     };
 
@@ -175,9 +192,18 @@ pub const Registers = struct {
         register: RegisterKind,
     ) u16 {
         return switch (register) {
-            .a => registers.a,
-            .b => registers.b,
-            .c => registers.c,
+            .a => if (registers.a.mode == .primary)
+                registers.a.primary
+            else
+                registers.a.secondary,
+            .b => if (registers.b.mode == .primary)
+                registers.b.primary
+            else
+                registers.b.secondary,
+            .c => if (registers.c.mode == .primary)
+                registers.c.primary
+            else
+                registers.c.secondary,
             .pc => registers.pc,
         };
     }
@@ -206,10 +232,35 @@ pub const Registers = struct {
 
     pub fn setNoCheck(register: RegisterKind, value: u16, cpu: *Cpu) void {
         switch (register) {
-            .a => cpu.registers.a = value,
-            .b => cpu.registers.b = value,
-            .c => cpu.registers.c = value,
+            .a => if (cpu.registers.a.mode == .primary) {
+                cpu.registers.a.primary = value;
+            } else {
+                cpu.registers.a.secondary = value;
+            },
+            .b => if (cpu.registers.b.mode == .primary) {
+                cpu.registers.b.primary = value;
+            } else {
+                cpu.registers.b.secondary = value;
+            },
+            .c => if (cpu.registers.c.mode == .primary) {
+                cpu.registers.c.primary = value;
+            } else {
+                cpu.registers.c.secondary = value;
+            },
             .pc => cpu.registers.pc = value,
+        }
+    }
+
+    fn setMode(
+        registers: *Registers,
+        register: RegisterKind,
+        mode: RegisterMode,
+    ) void {
+        switch (register) {
+            .a => registers.a.mode = mode,
+            .b => registers.b.mode = mode,
+            .c => registers.c.mode = mode,
+            .pc => {},
         }
     }
 };
@@ -384,6 +435,12 @@ fn execute(
 
     switch (instruction_with_data.instruction.opcode) {
         .mov => {
+            if (dest == instruction_with_data.instruction.source and
+                !instruction_with_data.instruction.deref_source)
+            {
+                cpu.registers.setMode(dest, .primary);
+            }
+
             const interrupt = Registers.set(
                 dest,
                 src_data,
@@ -454,6 +511,12 @@ fn execute(
             }
         },
         .@"and" => {
+            if (dest == instruction_with_data.instruction.source and
+                !instruction_with_data.instruction.deref_source)
+            {
+                cpu.registers.setMode(dest, .secondary);
+            }
+
             const interrupt = Registers.set(
                 dest,
                 dest_data & src_data,

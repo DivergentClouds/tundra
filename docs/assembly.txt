@@ -9,33 +9,41 @@ Assembly
 Instruction Format
 ------------------
 Instructions are composed of an opcode and 2 registers, the second of which may
-be dereferenced. There are 4 16-bit registers, the first 3 of which are general
-purpose. To dereference a register, prefix it with an asterisk. Dereferencing a
-register will read the little-endian value from memory at the address contained
-in the register. Dereferencing the program counter will read the 16-bit value
-in memory after the current instruction and then skip past it. For details, see
-cpu.txt.
+be dereferenced. To dereference a register, prefix it with an asterisk.
 
 Registers
 ---------
-A
-B
-C
-PC
+There are 7 16-bit registers, 4 of which are accessible at a time. The
+A, B, and C registers are general purpose and may be swapped out to secondary
+registers. To switch to a secondary register, use the AND instruction with the
+same register as both arguments. To switch back to the primary register, use the
+MOV instruction with the register as both arguments.
+
+  A
+  B
+  C
+  PC
 
 Dereferenced Registers
 ----------------------
-*A
-*B
-*C
-*PC
+Dereferencing a register will read the little-endian value from memory at the
+address contained in the register. Dereferencing the program counter will read
+the 16-bit value in memory after the current instruction and then skip past it.
+For details, see cpu.txt.
+
+  *A
+  *B
+  *C
+  *PC
 
 Instructions
 ------------
 |===============|==============================================|
 | Instruction   | Effect                                       |
 |===============|==============================================|
-| MOV dest, src | set dest to src                              |
+| MOV dest, src | set dest to src. if dest is the same         |
+|               | register as src, switch that register id to  |
+|               | refer to the matching primary register       |
 |---------------|----------------------------------------------|
 | STO dest, src | store src at memory[dest]                    |
 |---------------|----------------------------------------------|
@@ -48,7 +56,9 @@ Instructions
 |               | is positive, then rotate left, otherwise     |
 |               | rotate right                                 |
 |---------------|----------------------------------------------|
-| AND dest, src | set dest to dest & src                       |
+| AND dest, src | set dest to dest & src. if dest is the same  |
+|               | register as src, switch that register id to  |
+|               | refer to the matching secondary register     |
 |---------------|----------------------------------------------|
 | NOR dest, src | set dest to ~(dest | src)                    |
 |---------------|----------------------------------------------|
@@ -59,7 +69,7 @@ Assembling
 ----------
 To assemble a Tundra program, use fasmg (https://flatassembler.net/) and
 include either 'tundra-core.inc' or 'tundra-extra.inc' (which includes
-tundra-core) at the top of your file. Instructions, constants, and macros are
+tundra-core) at the top of the file. Instructions, constants, and macros are
 not case-sensitive. Semicolons start line comments.
 
 Tundra-Core
