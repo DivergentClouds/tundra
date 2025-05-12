@@ -237,6 +237,12 @@ assert that PC is mutable.
 
 Other Macros
 ------------
+  ; make dest refer to a primary register
+  TO_PRIMARY dest
+
+  ; make dest refer to a secondary register
+  TO_SECONDARY dest
+
   ; override the result of CMP to allow mutating PC
   CLEAR_FLAG
 

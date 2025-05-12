@@ -83,6 +83,18 @@ macro internal_construct_bits? name, count
   end repeat 
 end macro
 
+macro to_primary? dest
+  internal_assert_not_reg dest, pc
+
+  mov dest, dest
+end macro
+
+macro to_secondary? dest
+  internal_assert_not_reg dest, pc
+
+  and dest, dest
+end macro
+
 macro not? dest
   internal_assert_not_reg dest, pc
 
