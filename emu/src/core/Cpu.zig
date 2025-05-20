@@ -606,9 +606,9 @@ fn readInstruction(
         error.OutOfRange => unreachable, // checked earlier
         else => return err, // in case readByte ends up returning other errors
     };
-    const inst: Instruction = @bitCast(byte);
+    const instruction: Instruction = @bitCast(byte);
 
-    return inst;
+    return instruction;
 }
 
 fn checkAsyncInterrupt(cpu: *Cpu, terminal: *Terminal) !Interrupts {
