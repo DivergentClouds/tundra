@@ -152,9 +152,9 @@ const Register = enum(u2) {
 
 // packed structs are ordered with least significant fields on top
 const Instruction = packed struct(u8) {
-    reg_dest: Register,
-    deref_r: bool,
     reg_src: Register,
+    deref_src: bool,
+    reg_dest: Register,
     opcode: Opcode,
 };
 
@@ -178,7 +178,7 @@ fn readInstruction(
         "{x:0>4}: {s}{s} {s}, ",
         .{
             address.*, @tagName(instruction.opcode),
-            if (instruction.deref_r and instruction.reg_dest == .pc)
+            if (instruction.deref_src and instruction.reg_dest == .pc)
                 "i"
             else
                 "",
@@ -186,7 +186,7 @@ fn readInstruction(
         },
     );
 
-    if (instruction.deref_r and instruction.reg_dest == .pc) {
+    if (instruction.deref_src and instruction.reg_dest == .pc) {
         try writer.print(
             "{x:0>4}",
             .{
@@ -195,7 +195,7 @@ fn readInstruction(
         );
         address.* += 2;
     } else {
-        if (instruction.deref_r) try writer.writeByte('*');
+        if (instruction.deref_src) try writer.writeByte('*');
         try writer.writeAll(@tagName(instruction.reg_dest));
     }
 
