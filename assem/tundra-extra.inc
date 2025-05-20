@@ -36,6 +36,7 @@ virtual at 0xfff0
   .int_kind? = 0xfff8
   .enabled_ints? = 0xfff9
   .bank_map? = 0xfffa
+  .alt_registers? = 0xfffb
   .halt? = 0xffff
 end virtual
 
@@ -83,13 +84,15 @@ macro internal_construct_bits? name, count
   end repeat 
 end macro
 
-macro to_primary? dest
+; switch dest to refer to a primary register
+macro to_prime? dest
   internal_assert_not_reg dest, pc
 
   mov dest, dest
 end macro
 
-macro to_secondary? dest
+; switch dest to refer to a secondary register
+macro to_alt? dest
   internal_assert_not_reg dest, pc
 
   and dest, dest

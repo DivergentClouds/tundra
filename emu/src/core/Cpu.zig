@@ -51,7 +51,8 @@ pub const Interrupts = packed struct(u16) {
     exec_protection: bool = false,
     timer: bool = false,
     keyboard: bool = false,
-    _: u11 = 0,
+    register_protection: bool = false,
+    _: u10 = 0,
 
     const init: Interrupts = .{};
 
@@ -219,7 +220,7 @@ pub const Registers = struct {
             if (cpu.cmp_flag and jump) {
                 cpu.cmp_flag = false;
             } else {
-                const interrupt = checkPermissionInterrupt(cpu.*, value, .execute);
+                const interrupt = cpu.checkPermissionInterrupt(value, .execute);
                 if (interrupt != Interrupts{}) {
                     return interrupt;
                 }
@@ -252,16 +253,23 @@ pub const Registers = struct {
     }
 
     fn setMode(
-        registers: *Registers,
         register: RegisterKind,
         mode: RegisterMode,
-    ) void {
+        cpu: *Cpu,
+    ) Interrupts {
+        if (mode == .secondary) {
+            const interrupt = cpu.checkPermissionInterrupt(null, .register);
+            if (interrupt != Interrupts{})
+                return interrupt;
+        }
         switch (register) {
-            .a => registers.a.mode = mode,
-            .b => registers.b.mode = mode,
-            .c => registers.c.mode = mode,
+            .a => cpu.registers.a.mode = mode,
+            .b => cpu.registers.b.mode = mode,
+            .c => cpu.registers.c.mode = mode,
             .pc => {},
         }
+
+        return .{};
     }
 };
 
@@ -384,7 +392,7 @@ fn dereferenceSource(
     const source_register_value = cpu.registers.get(instruction.source);
 
     // we know instruction.deref_source is true
-    const interrupt = checkPermissionInterrupt(cpu.*, source_register_value, .write);
+    const interrupt = cpu.checkPermissionInterrupt(source_register_value, .write);
 
     if (interrupt != Interrupts{}) {
         cpu.instruction_state = .{ .interrupt = interrupt };
@@ -438,7 +446,8 @@ fn execute(
             if (dest == instruction_with_data.instruction.source and
                 !instruction_with_data.instruction.deref_source)
             {
-                cpu.registers.setMode(dest, .primary);
+                // switching to primary mode cannot cause an interrupt
+                _ = Registers.setMode(dest, .primary, cpu);
             }
 
             const interrupt = Registers.set(
@@ -454,7 +463,7 @@ fn execute(
             }
         },
         .sto => {
-            const interrupt = checkPermissionInterrupt(cpu.*, dest_data, .write);
+            const interrupt = cpu.checkPermissionInterrupt(dest_data, .write);
 
             if (interrupt != Interrupts{}) {
                 cpu.instruction_state = .{ .interrupt = interrupt };
@@ -514,7 +523,11 @@ fn execute(
             if (dest == instruction_with_data.instruction.source and
                 !instruction_with_data.instruction.deref_source)
             {
-                cpu.registers.setMode(dest, .secondary);
+                const interrupt = Registers.setMode(dest, .secondary, cpu);
+                if (interrupt != Interrupts{}) {
+                    cpu.instruction_state = .{ .interrupt = interrupt };
+                    return 1;
+                }
             }
 
             const interrupt = Registers.set(
@@ -603,11 +616,11 @@ fn checkAsyncInterrupt(cpu: *Cpu, terminal: *Terminal) !Interrupts {
 
 fn checkPermissionInterrupt(
     cpu: Cpu,
-    address: u16,
-    kind: enum { read, write, execute },
+    address: ?u16,
+    kind: enum { read, write, execute, register },
 ) Interrupts {
     const pc_region = Memory.regionIndex(cpu.registers.pc);
-    const address_region = Memory.regionIndex(address);
+    const address_region = Memory.regionIndex(address orelse 0);
 
     const permission_region = pc_region < 4 and address_region == 4;
 
@@ -618,6 +631,8 @@ fn checkPermissionInterrupt(
             return Interrupts{ .write_protection = true },
         .execute => if (permission_region and cpu.enabled_interrupts.exec_protection)
             return Interrupts{ .exec_protection = true },
+        .register => if (pc_region < 4 and cpu.enabled_interrupts.register_protection)
+            return Interrupts{ .register_protection = true },
     }
 
     return Interrupts{};

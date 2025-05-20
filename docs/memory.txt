@@ -22,7 +22,7 @@ If an MMIO address marked read/write has not been written to, it defaults to 0.
 Accessing storage mid-operation is prohibited and leads to undefined behavior.
 For more information on storage, see storage.txt.
 
-information about the types and effects of interrupts can be found in
+Information about the types and effects of interrupts can be found in
 interrupts.txt.
 
 For details about the terminal, see terminal.txt.
@@ -82,6 +82,10 @@ more information.
 |---------|------------|-----------------------------------|
 | 0xfffa  | read/write | holds a bitfield specifying which |
 |         |            | bank is mapped to each region     |
+|---------|------------|-----------------------------------|
+| 0xfffb  | read       | read a bitfield marking whether   |
+|         |            | each general purpose register id  |
+|         |            | refers to a secondary register    |
 |---------|------------|-----------------------------------|
 | 0xffff  | write      | halt execution                    |
 |---------|------------|-----------------------------------|

@@ -15,20 +15,27 @@ interrupt. For more information on interrupts, see interrupts.txt.
 
 Registers
 ---------
-Tundra has 7 16-bit registers, 4 of which are accessible at a time. The
-registers A, B, and C are general purpose. Each register has an id,
-which is used to represent it in machine code. Numbers in the following diagram
-are in binary. The final 3 registers may be accessed by a AND with the same
-register as both arguments. This will make the register id to correspond to
-a secondary register. To return to the primary register, use MOV with the same
-register as both arguments.
+Tundra has 7 16-bit registers, 4 of which are accessible at a time. Each
+register has an id, which is used to represent it in machine code. Numbers in
+the following diagram are in binary. 
 
   A  = 00
   B  = 01
   C  = 10
   PC = 11
 
-PC is incremented by 1 immediately after an instruction is fetched.
+The register ids A, B, and C refer to general purpose registers. By default
+they refer to primary registers. To switch a register id to refer to a secondary
+register, use the AND instruction with the same general purpose register id as
+both arguments. To switch back to a primary register, use MOV with the same
+register id as both arguments.
+
+To get a bitfield denoting whether each register id refers to a secondary
+register, read from MMIO.ALT_REGISTERS. The bitfield may be indexed by numerical
+register id, starting from the least significant bit.
+
+The program counter is incremented by 1 immediately after an instruction is
+fetched.
 
 Dereferencing
 -------------

@@ -14,10 +14,12 @@ be dereferenced. To dereference a register, prefix it with an asterisk.
 Registers
 ---------
 There are 7 16-bit registers, 4 of which are accessible at a time. The
-A, B, and C registers are general purpose and may be swapped out to secondary
-registers. To switch to a secondary register, use the AND instruction with the
-same register as both arguments. To switch back to the primary register, use the
-MOV instruction with the register as both arguments.
+A, B, and C register ids refer to general purpose registers. Each general
+purpose register id can refer to 1 of 2 registers. By default they refer to
+primary registers. To switch to a secondary register, use the AND instruction
+with the same general purpose register id as both arguments. To switch back to a
+primary register, use the MOV instruction with the same register id as both
+arguments.
 
   A
   B

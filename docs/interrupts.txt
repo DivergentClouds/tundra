@@ -35,4 +35,7 @@ Interrupt Kinds
 | 0x10 | keyboard          | trigger interrupt when a key on the keyboard is   |
 |      |                   | pressed, the keyboard is polled at 100 Hz.        |
 |------|-------------------|---------------------------------------------------|
+| 0x20 | register          | trigger interrupt when code in memory regions 0-3 |
+|      | protection        | attempts to switch to a secondary register        |
+|------|-------------------|---------------------------------------------------|
 
