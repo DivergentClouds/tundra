@@ -21,6 +21,7 @@ pub const ReadPort = enum(u16) {
     interrupt_kind = 0xfff8,
     enabled_interrupts = 0xfff9,
     bank_map = 0xfffa,
+    alt_registers = 0xfffb,
     _,
 };
 
@@ -72,6 +73,7 @@ pub fn read(
         .interrupt_kind => @bitCast(io.cpu.latest_interrupt),
         .enabled_interrupts => @bitCast(io.cpu.enabled_interrupts),
         .bank_map => @bitCast(io.memory.region_bitmap),
+        .alt_registers => io.cpu.registers.getModeBitmap(),
         _ => return error.InvalidMmioRead,
     };
 }

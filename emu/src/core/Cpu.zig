@@ -271,6 +271,25 @@ pub const Registers = struct {
 
         return .{};
     }
+
+    pub fn getModeBitmap(
+        registers: Registers,
+    ) u16 {
+        const ModeBitmap = packed struct(u16) {
+            a: bool,
+            b: bool,
+            c: bool,
+            _: u13 = 0,
+        };
+
+        const modes: ModeBitmap = .{
+            .a = registers.a.mode == .secondary,
+            .b = registers.b.mode == .secondary,
+            .c = registers.c.mode == .secondary,
+        };
+
+        return @bitCast(modes);
+    }
 };
 
 const InstructionWithData = struct {
