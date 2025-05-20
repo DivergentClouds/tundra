@@ -57,10 +57,10 @@ const Bank = struct {
 };
 
 const RegionBitmap = packed struct(u16) {
-    region3: u4,
-    region2: u4,
-    region1: u4,
     region0: u4,
+    region1: u4,
+    region2: u4,
+    region3: u4,
 };
 
 pub fn mapRegions(memory: *Memory, bitmap: u16) void {
@@ -72,6 +72,8 @@ pub fn mapRegions(memory: *Memory, bitmap: u16) void {
     memory.active_regions[1] = memory.banks[region_bitmap.region1].region1;
     memory.active_regions[2] = memory.banks[region_bitmap.region2].region2;
     memory.active_regions[3] = memory.banks[region_bitmap.region3].region3;
+
+    std.debug.print("{any}\n", .{memory.region_bitmap});
 }
 
 pub fn init(
