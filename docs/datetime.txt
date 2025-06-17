@@ -1,0 +1,19 @@
+==========
+= Tundra =
+==========
+
+
+Date/Time
+=========
+
+Time
+----
+MMIO.TIME stores the number of 2 second intervals since midnight. This value
+wraps around upon reaching 43200 (the number of seconds in a day). Setting
+MMIO.TIME to a value greater than or equal to 43200 is prohibited and leads to
+undefined behavior.
+
+Date
+----
+MMIO.DATE tracks the number of days since the epoch. The recommended epoch is
+January 1st 1970, but this is not enforced.

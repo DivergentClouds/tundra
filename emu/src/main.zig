@@ -6,6 +6,7 @@ const Io = @import("core/Io.zig");
 const Memory = @import("core/Memory.zig");
 const Storage = @import("core/Storage.zig");
 const Terminal = @import("core/Terminal.zig");
+const DateTime = @import("core/DateTime.zig");
 
 const Debug = @import("Debug.zig");
 
@@ -18,6 +19,7 @@ pub const Core = struct {
     memory: Memory,
     storage: Storage,
     terminal: Terminal,
+    datetime: DateTime,
     timestamp: i128,
 
     allocator: std.mem.Allocator,
@@ -37,11 +39,14 @@ pub const Core = struct {
         core.terminal = try .init(allocator, debug_mode);
         errdefer core.terminal.deinit();
 
+        core.datetime = try .init();
+
         core.io = .{
             .cpu = &core.cpu,
             .memory = &core.memory,
             .storage = &core.storage,
             .terminal = &core.terminal,
+            .datetime = &core.datetime,
         };
 
         core.memory = try .init(allocator, core.io);

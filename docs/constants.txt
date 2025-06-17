@@ -77,8 +77,11 @@ MMIO Addresses
   ; read/write
   MMIO.BANK_MAP = 0xFFFA
 
-  ; read
-  MMIO.ALT_REGISTERS = 0xFFFB
+  ; read/write
+  MMIO.TIME = 0xFFFB
+
+  ; read/write
+  MMIO.DATE = 0xFFFC
 
   ; write
   MMIO.HALT = 0xFFFF

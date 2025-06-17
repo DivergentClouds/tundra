@@ -30,10 +30,6 @@ register, use the AND instruction with the same general purpose register id as
 both arguments. To switch back to a primary register, use MOV with the same
 register id as both arguments.
 
-To get a bitfield denoting whether each register id refers to a secondary
-register, read from MMIO.ALT_REGISTERS. The bitfield may be indexed by numerical
-register id, starting from the least significant bit.
-
 The program counter is incremented by 1 immediately after an instruction is
 fetched.
 

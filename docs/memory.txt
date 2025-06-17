@@ -27,6 +27,8 @@ interrupts.txt.
 
 For details about the terminal, see terminal.txt.
 
+For information on date and time functionality, see datetime.txt.
+
 Invalid access of MMIO is prohibited and leads to undefined behavior.
 
 tundra-extra.inc includes constants for MMIO addresses. See constants.txt for
@@ -83,9 +85,11 @@ more information.
 | 0xfffa  | read/write | holds a bitfield specifying which |
 |         |            | bank is mapped to each region     |
 |---------|------------|-----------------------------------|
-| 0xfffb  | read       | read a bitfield marking whether   |
-|         |            | each general purpose register id  |
-|         |            | refers to a secondary register    |
+| 0xfffb  | read/write | stores the number of 2-second     |
+|         |            | intervals since midnight          |          
+|---------|------------|-----------------------------------|
+| 0xfffc  | read/write | stores the number of days since   |
+|         |            | the epoch                         |
 |---------|------------|-----------------------------------|
 | 0xffff  | write      | halt execution                    |
 |---------|------------|-----------------------------------|

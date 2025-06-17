@@ -4,12 +4,14 @@ const Cpu = @import("Cpu.zig");
 const Memory = @import("Memory.zig");
 const Storage = @import("Storage.zig");
 const Terminal = @import("Terminal.zig");
+const DateTime = @import("DateTime.zig");
 const Io = @This();
 
 cpu: *Cpu,
 memory: *Memory,
 storage: *Storage,
 terminal: *Terminal,
+datetime: *DateTime,
 
 pub const ReadPort = enum(u16) {
     read_terminal = 0xfff0,
@@ -21,7 +23,8 @@ pub const ReadPort = enum(u16) {
     interrupt_kind = 0xfff8,
     enabled_interrupts = 0xfff9,
     bank_map = 0xfffa,
-    alt_registers = 0xfffb,
+    time = 0xfffb,
+    date = 0xfffc,
     _,
 };
 
@@ -35,6 +38,8 @@ pub const WritePort = enum(u16) {
     interrupt_handler = 0xfff6,
     enabled_interrupts = 0xfff9,
     bank_map = 0xfffa,
+    time = 0xfffb,
+    date = 0xfffc,
     halt = 0xffff,
     _,
 };
@@ -54,6 +59,8 @@ pub fn write(
         .interrupt_handler => io.cpu.interrupt_handler = value,
         .enabled_interrupts => io.cpu.enabled_interrupts = @bitCast(value),
         .bank_map => io.memory.mapRegions(value),
+        .time => try io.datetime.setTime(value),
+        .date => try io.datetime.setDate(value),
         .halt => io.cpu.running = false,
         _ => return error.InvalidMmioWrite,
     }
@@ -73,7 +80,14 @@ pub fn read(
         .interrupt_kind => @bitCast(io.cpu.latest_interrupt),
         .enabled_interrupts => @bitCast(io.cpu.enabled_interrupts),
         .bank_map => @bitCast(io.memory.region_bitmap),
-        .alt_registers => io.cpu.registers.getModeBitmap(),
+        .time => {
+            try io.datetime.update();
+            return io.datetime.time;
+        },
+        .date => {
+            try io.datetime.update();
+            return io.datetime.date;
+        },
         _ => return error.InvalidMmioRead,
     };
 }

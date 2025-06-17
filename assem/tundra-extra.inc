@@ -36,7 +36,8 @@ virtual at 0xfff0
   .int_kind? = 0xfff8
   .enabled_ints? = 0xfff9
   .bank_map? = 0xfffa
-  .alt_registers? = 0xfffb
+  .time? = 0xfffb
+  .date? = 0xfffc
   .halt? = 0xffff
 end virtual
 
