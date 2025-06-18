@@ -86,7 +86,7 @@ more information.
 |         |            | bank is mapped to each region     |
 |---------|------------|-----------------------------------|
 | 0xfffb  | read/write | stores the number of 2-second     |
-|         |            | intervals since midnight          |          
+|         |            | intervals since midnight          |
 |---------|------------|-----------------------------------|
 | 0xfffc  | read/write | stores the number of days since   |
 |         |            | the epoch                         |
